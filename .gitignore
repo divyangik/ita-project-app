@@ -1,0 +1,11 @@
+ita-package-manager/node_modules/
+ita-package-manager/.env
+ita-package-manager/.shopify/
+ita-package-manager/.react-router/
+ita-package-manager/prisma/dev.sqlite
+ita-package-manager/prisma/dev.sqlite-journal
+
+ita-package-service/venv/
+ita-package-service/__pycache__/
+ita-package-service/.env
+ita-package-service/packages.db
