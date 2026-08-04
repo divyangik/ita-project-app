@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# Build output
+build/
+dist/
+.vite/
+.cache/
+
+# React Router
+.react-router/
+
+
+
+# Shopify
+.shopify/
+.shopify.lock
+
+# Prisma
+.prisma/
+prisma/dev.sqlite
+prisma/dev.sqlite-journal
+*.sqlite
+*.db
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# Extensions
+/extensions/*/dist
+
+# macOS
+.DS_Store
