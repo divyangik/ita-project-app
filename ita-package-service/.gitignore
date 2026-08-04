@@ -1,0 +1,19 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+.env.*
+
+# Database
+packages.db
+*.db
+*.sqlite
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
