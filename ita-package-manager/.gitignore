@@ -36,5 +36,7 @@ coverage/
 # Extensions
 /extensions/*/dist
 
+.cursor/
+
 # macOS
 .DS_Store
