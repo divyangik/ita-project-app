@@ -124,6 +124,15 @@ class TourCapacityBase(BaseModel):
     private_rooms_price: int = 0
     private_rooms_count: int = 1
 
+class PackageResponse(PackageCreate):
+    id: int
+    package_code: str
+    shop_domain: str
+    tour_dates: List["TourDateResponse"] = []
+
+    class Config:
+        from_attributes = True
+
 
 class TourCapacityCreate(TourCapacityBase):
     pass

@@ -29,7 +29,12 @@ def dashboard(
     db: Session = Depends(get_db),
     _: None = Depends(check_internal_key),
 ):
-    packages = db.query(Package).filter_by(shop_domain=shop).all()
+    packages = (
+        db.query(Package)
+        .filter_by(shop_domain=shop)
+        .order_by(Package.created_at.desc(), Package.id.desc())
+        .all()
+    )
 
     total = len(packages)
 
@@ -59,6 +64,6 @@ def dashboard(
                 "payment_status": p.payment_status,
                 "status": p.status,
             }
-            for p in packages[-5:]
+            for p in packages[:10]
         ],
     }

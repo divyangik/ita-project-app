@@ -33,13 +33,13 @@ function ToggleCell({ enquiry }) {
   return (
     <button
       onClick={toggle}
-      className={`relative inline-flex h-7 w-14 items-center rounded-full transition-all duration-300 ${
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-all duration-300 ${
         optimistic ? "bg-green-500" : "bg-gray-300"
       }`}
     >
       <span
-        className={`inline-block h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-300 ${
-          optimistic ? "translate-x-7" : "translate-x-1"
+        className={`inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-300 ${
+          optimistic ? "translate-x-5" : "translate-x-1"
         }`}
       />
     </button>
@@ -51,10 +51,9 @@ export default function EnquiryList({ enquiries }) {
   const total = list.length;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
       {/* Header */}
-
-      <div className="flex items-center justify-between border-b bg-white px-8 py-6">
+      <div className="flex items-center justify-between border-b bg-white px-6 py-5">
         <div>
           <h2 className="text-xl font-bold text-gray-900">
             Customer Enquiries
@@ -66,39 +65,43 @@ export default function EnquiryList({ enquiries }) {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full">
+      <div className="w-full overflow-x-auto">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-12" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[18%]" />
+            <col className="w-[12%]" />
+            <col className="w-[20%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+          </colgroup>
+
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-8 py-5 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Sr.
               </th>
-
-              <th className="px-8 py-5 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Package
               </th>
-
-              <th className="px-8 py-5 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Customer
               </th>
-
-              <th className="px-8 py-5 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Email
               </th>
-
-              <th className="px-8 py-5 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Phone
               </th>
-
-              <th className="px-8 py-5 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Message
               </th>
-
-              <th className="px-8 py-5 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
                 Responded
               </th>
-
-              <th className="px-8 py-5 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
                 Date
               </th>
             </tr>
@@ -117,47 +120,52 @@ export default function EnquiryList({ enquiries }) {
                   key={e.id}
                   className="transition duration-200 hover:bg-blue-50"
                 >
-                  <td className="px-8 py-6 font-medium text-gray-500">
+                  <td className="px-3 py-4 align-top font-medium text-gray-500">
                     {total - idx}
                   </td>
 
-                  <td className="px-8 py-6">
-                    <div className="max-w-[180px] font-semibold text-gray-900">
+                  <td className="px-3 py-4 align-top">
+                    <div className="truncate font-semibold text-gray-900">
                       {e.package_title || "-"}
                     </div>
                   </td>
 
-                  <td className="px-8 py-6">
-                    <div className="font-semibold text-gray-900">{e.name}</div>
+                  <td className="px-3 py-4 align-top">
+                    <div className="truncate font-semibold text-gray-900">
+                      {e.name}
+                    </div>
                   </td>
 
-                  <td className="px-8 py-6">
+                  <td className="px-3 py-4 align-top">
                     <a
                       href={`mailto:${e.email}`}
-                      className="text-blue-600 hover:underline"
+                      className="block truncate text-blue-600 hover:underline"
+                      title={e.email}
                     >
                       {e.email}
                     </a>
                   </td>
 
-                  <td className="px-8 py-6">
-                    <span className="rounded-full bg-gray-100 px-4 py-2 text-gray-700">
+                  <td className="px-3 py-4 align-top">
+                    <span className="inline-block truncate rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700">
                       {e.phone}
                     </span>
                   </td>
 
-                  <td className="px-8 py-6">
-                    <div className="max-w-xs truncate text-gray-600">
+                  <td className="px-3 py-4 align-top">
+                    <div
+                      className="truncate text-gray-600"
+                      title={e.message || ""}
+                    >
                       {e.message || "-"}
                     </div>
                   </td>
 
-                  <td className="px-8 py-6">
-                    <div className="flex items-center justify-center gap-3">
+                  <td className="px-3 py-4 align-top">
+                    <div className="flex items-center justify-center gap-2">
                       <ToggleCell enquiry={e} />
-
                       <span
-                        className={`font-semibold ${
+                        className={`text-xs font-semibold ${
                           e.lead_responded ? "text-green-600" : "text-gray-500"
                         }`}
                       >
@@ -166,9 +174,9 @@ export default function EnquiryList({ enquiries }) {
                     </div>
                   </td>
 
-                  <td className="px-8 py-6 text-center">
+                  <td className="px-3 py-4 text-center align-top">
                     {e.responded_date ? (
-                      <span className="inline-flex rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700">
+                      <span className="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
                         {formatDate(e.responded_date)}
                       </span>
                     ) : (

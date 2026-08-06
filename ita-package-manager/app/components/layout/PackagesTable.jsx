@@ -103,17 +103,26 @@ const PAYMENT_CONFIG = {
 };
 
 function formatDates(pkg) {
-  if (pkg.created_at) {
-    const d = new Date(pkg.created_at);
-    if (!Number.isNaN(d.getTime())) {
-      return d.toLocaleDateString("en-US", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-    }
-  }
-  return "No dates";
+  const dates = pkg.tour_dates || [];
+  if (dates.length === 0) return "No dates";
+
+  const today = new Date().setHours(0, 0, 0, 0);
+  const upcoming = dates
+    .map((d) => ({ ...d, dt: new Date(d.departure_date) }))
+    .filter((d) => !Number.isNaN(d.dt.getTime()) && d.dt.getTime() >= today)
+    .sort((a, b) => a.dt - b.dt);
+
+  const next = upcoming[0] || dates[0];
+  if (!next?.departure_date) return "No dates";
+
+  const label = new Date(next.departure_date).toLocaleDateString("en-US", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+  const extra = dates.length - 1;
+  return extra > 0 ? `${label} +${extra} more` : label;
 }
 
 function PackageRow({ pkg, onDelete }) {

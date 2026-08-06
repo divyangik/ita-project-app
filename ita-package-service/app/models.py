@@ -27,7 +27,7 @@ class Package(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     package_code = Column(String(50), unique=True, nullable=False)
-    shop_domain = Column(String(255), nullable=False)
+    shop_domain = Column(String(255), nullable=False, index=True)
 
     title = Column(String(255), nullable=False)
     destination = Column(String(255), nullable=False)
@@ -202,9 +202,10 @@ class TourDate(Base):
         Integer,
         ForeignKey("packages.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
 
-    departure_date = Column(Date, nullable=False)
+    departure_date = Column(Date, nullable=False, index=True)
     return_date = Column(Date, nullable=False)
 
     seats_total = Column(Integer, default=0)

@@ -6,12 +6,16 @@ from ..database import get_db
 from ..dependencies import check_internal_key
 from ..models import Package
 from ..schemas import PackageCreate, PackageResponse
+from sqlalchemy.orm import Session, joinedload
 
 router = APIRouter(
     prefix="/packages",
     tags=["Packages"],
 )
 
+
+from sqlalchemy.orm import Session, joinedload
+...
 
 @router.get("/{package_id}", response_model=PackageResponse)
 def get_package(
@@ -22,19 +26,12 @@ def get_package(
 ):
     package = (
         db.query(Package)
-        .filter(
-            Package.id == package_id,
-            Package.shop_domain == shop,
-        )
+        .options(joinedload(Package.tour_dates))
+        .filter(Package.id == package_id, Package.shop_domain == shop)
         .first()
     )
-
     if not package:
-        raise HTTPException(
-            status_code=404,
-            detail="Package not found",
-        )
-
+        raise HTTPException(status_code=404, detail="Package not found")
     return package
 
 
@@ -46,10 +43,10 @@ def list_packages(
 ):
     packages = (
         db.query(Package)
+        .options(joinedload(Package.tour_dates))
         .filter(Package.shop_domain == shop)
         .all()
     )
-
     return packages
 
 @router.post("")
