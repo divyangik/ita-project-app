@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 function formatDateLabel(isoDate) {
   if (!isoDate) return "";
@@ -20,15 +20,59 @@ function formatDateLabel(isoDate) {
   return `${parseInt(day, 10)} ${months[parseInt(month, 10) - 1]} ${year}`;
 }
 
+function todayIso() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function validateDates(start, end) {
+  const today = todayIso();
+
+  if (start && start < today) {
+    return { start: "Start date can't be in the past." };
+  }
+  if (end && end < today) {
+    return { end: "End date can't be in the past." };
+  }
+  if (start && end && end === start) {
+    return { end: "End date can't be the same as the start date." };
+  }
+  if (start && end && end < start) {
+    return { end: "End date must be after the start date." };
+  }
+  return {};
+}
+
 export default function DatesTab({ dates = [], packageBasePrice, fetcher }) {
   const [newStartDate, setNewStartDate] = useState("");
   const [newEndDate, setNewEndDate] = useState("");
   const [newMessage, setNewMessage] = useState("");
 
   const adding = fetcher.state !== "idle";
+  const min = useMemo(() => todayIso(), []);
+  const errors = useMemo(
+    () => validateDates(newStartDate, newEndDate),
+    [newStartDate, newEndDate],
+  );
+  const hasErrors = Boolean(errors.start || errors.end);
+
+  function handleStartChange(e) {
+    const value = e.target.value;
+    setNewStartDate(value);
+    // If the end date is no longer valid against the new start date, clear it
+    // so the user can't submit a stale, now-invalid pair.
+    if (newEndDate && (newEndDate <= value)) {
+      setNewEndDate("");
+    }
+  }
 
   function handleAddDate() {
     if (!newStartDate || !newEndDate) return;
+    if (validateDates(newStartDate, newEndDate).start) return;
+    if (validateDates(newStartDate, newEndDate).end) return;
 
     fetcher.submit(
       {
@@ -85,30 +129,73 @@ export default function DatesTab({ dates = [], packageBasePrice, fetcher }) {
           </div>
         </div>
 
-        <div className="flex items-end gap-3">
+        <div className="flex items-start gap-3">
           <div className="flex-1">
             <input
               type="date"
+              min={min}
               value={newStartDate}
-              onChange={(e) => setNewStartDate(e.target.value)}
+              onChange={handleStartChange}
               placeholder="Tour Start Date"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-1 ${
+                errors.start
+                  ? "border-red-400 focus:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              }`}
             />
+            {errors.start && (
+              <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="h-3.5 w-3.5 shrink-0"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v5M12 16h.01" />
+                </svg>
+                {errors.start}
+              </p>
+            )}
           </div>
+
           <div className="flex-1">
             <input
               type="date"
+              min={newStartDate || min}
               value={newEndDate}
               onChange={(e) => setNewEndDate(e.target.value)}
+              disabled={!newStartDate}
               placeholder="Tour End Date"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 ${
+                errors.end
+                  ? "border-red-400 focus:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              }`}
             />
+            {errors.end && (
+              <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="h-3.5 w-3.5 shrink-0"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v5M12 16h.01" />
+                </svg>
+                {errors.end}
+              </p>
+            )}
           </div>
+
           <button
             type="button"
             onClick={handleAddDate}
-            disabled={adding || !newStartDate || !newEndDate}
-            className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            disabled={adding || !newStartDate || !newEndDate || hasErrors}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <svg
               viewBox="0 0 24 24"

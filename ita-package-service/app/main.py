@@ -12,7 +12,8 @@ from .routes.tour_includes import router as tour_includes_router
 from .routes.enquiries import router as enquiry_router
 from .routes.storefront import router as storefront_router
 from fastapi.middleware.cors import CORSMiddleware
-
+from .routes.package_countries import router as package_countries_router
+from .routes.package_cities import router as package_cities_router
 # Create all database tables
 Base.metadata.create_all(bind=engine)
 
@@ -45,7 +46,8 @@ app.include_router(tour_guest_addons_router)
 app.include_router(tour_includes_router)
 app.include_router(enquiry_router)
 app.include_router(storefront_router)
-
+app.include_router(package_countries_router)
+app.include_router(package_cities_router)
 
 @app.get("/")
 def root():

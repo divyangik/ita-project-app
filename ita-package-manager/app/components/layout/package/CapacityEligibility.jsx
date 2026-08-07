@@ -23,8 +23,77 @@ function buildInitial(data = {}) {
     private_rooms_type: data.private_rooms_type || "",
     private_rooms_price: data.private_rooms_price ?? 0,
     private_rooms_count: data.private_rooms_count ?? 1,
+
+    couple_room_type: data.couple_room_type || "",
+    couple_room_price: data.couple_room_price ?? 0,
+    couple_room_count: data.couple_room_count ?? 1,
+    child_room_type: data.child_room_type || "",
+    child_room_price: data.child_room_price ?? 0,
+    child_room_count: data.child_room_count ?? 1,
   };
 }
+
+// Each add-on group gets its own accent so the tiles are easy to tell apart
+// at a glance — three colors used across four groups (extra nights + private
+// rooms share the blue family the header already uses).
+const GROUPS = [
+  {
+    key: "extra_nights",
+    title: "Extra nights",
+    accent: "blue",
+    typeField: "extra_nights_type",
+    priceField: "extra_nights_price",
+    countField: "extra_nights_count",
+  },
+  {
+    key: "private_rooms",
+    title: "Private rooms",
+    accent: "blue",
+    typeField: "private_rooms_type",
+    priceField: "private_rooms_price",
+    countField: "private_rooms_count",
+  },
+  {
+    key: "couple_room",
+    title: "Couple room",
+    accent: "rose",
+    typeField: "couple_room_type",
+    priceField: "couple_room_price",
+    countField: "couple_room_count",
+  },
+  {
+    key: "child_room",
+    title: "Child room",
+    accent: "amber",
+    typeField: "child_room_type",
+    priceField: "child_room_price",
+    countField: "child_room_count",
+  },
+];
+
+const ACCENTS = {
+  blue: {
+    bg: "bg-blue-50/60",
+    border: "border-blue-100",
+    dot: "bg-blue-500",
+    text: "text-blue-700",
+    ring: "focus:border-blue-500 focus:ring-blue-100",
+  },
+  rose: {
+    bg: "bg-rose-50/60",
+    border: "border-rose-100",
+    dot: "bg-rose-500",
+    text: "text-rose-700",
+    ring: "focus:border-rose-500 focus:ring-rose-100",
+  },
+  amber: {
+    bg: "bg-amber-50/60",
+    border: "border-amber-100",
+    dot: "bg-amber-500",
+    text: "text-amber-700",
+    ring: "focus:border-amber-500 focus:ring-amber-100",
+  },
+};
 
 export default function CapacityEligibility({ data = {}, onChange }) {
   const [form, setForm] = useState(() => buildInitial(data));
@@ -95,122 +164,89 @@ export default function CapacityEligibility({ data = {}, onChange }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 divide-y divide-gray-200 border-t border-gray-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <div className="p-6">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Extra nights type
-          </label>
-          <input
-            type="text"
-            value={form.extra_nights_type}
-            onChange={(e) => update({ extra_nights_type: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
+      {/* Add-on tiles: extra nights / private rooms / couple room / child room */}
+      <div className="grid grid-cols-1 gap-4 border-t border-gray-200 p-6 sm:grid-cols-2">
+        {GROUPS.map((group) => {
+          const accent = ACCENTS[group.accent];
 
-        <div className="p-6">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Price for extra nights type
-          </label>
-          <input
-            type="number"
-            min="0"
-            value={form.extra_nights_price}
-            onChange={(e) =>
-              update({ extra_nights_price: Number(e.target.value) || 0 })
-            }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-
-        <div className="p-6">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Number of extra nights
-          </label>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => stepper("extra_nights_count", -1, 1)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+          return (
+            <div
+              key={group.key}
+              className={`rounded-xl border ${accent.border} ${accent.bg} p-5`}
             >
-              −
-            </button>
-            <input
-              type="number"
-              value={form.extra_nights_count}
-              onChange={(e) =>
-                update({ extra_nights_count: Number(e.target.value) || 1 })
-              }
-              className="w-14 rounded-lg border border-gray-300 px-2 py-2 text-center text-sm font-medium"
-            />
-            <button
-              type="button"
-              onClick={() => stepper("extra_nights_count", 1, 1)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      </div>
+              <div className="mb-3 flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${accent.dot}`} />
+                <h4 className={`text-sm font-semibold ${accent.text}`}>
+                  {group.title}
+                </h4>
+              </div>
 
-      <div className="grid grid-cols-1 divide-y divide-gray-200 border-t border-gray-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <div className="p-6">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Private rooms type
-          </label>
-          <input
-            type="text"
-            value={form.private_rooms_type}
-            onChange={(e) => update({ private_rooms_type: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">
+                    Type
+                  </label>
+                  <input
+                    type="text"
+                    value={form[group.typeField]}
+                    onChange={(e) => update({ [group.typeField]: e.target.value })}
+                    placeholder={`e.g. ${group.title}`}
+                    className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 ${accent.ring}`}
+                  />
+                </div>
 
-        <div className="p-6">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Private rooms price
-          </label>
-          <input
-            type="number"
-            min="0"
-            value={form.private_rooms_price}
-            onChange={(e) =>
-              update({ private_rooms_price: Number(e.target.value) || 0 })
-            }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500">
+                      Price
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form[group.priceField]}
+                      onChange={(e) =>
+                        update({ [group.priceField]: Number(e.target.value) || 0 })
+                      }
+                      className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${accent.ring}`}
+                    />
+                  </div>
 
-        <div className="p-6">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Number of private rooms
-          </label>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => stepper("private_rooms_count", -1, 1)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
-            >
-              −
-            </button>
-            <input
-              type="number"
-              value={form.private_rooms_count}
-              onChange={(e) =>
-                update({ private_rooms_count: Number(e.target.value) || 1 })
-              }
-              className="w-14 rounded-lg border border-gray-300 px-2 py-2 text-center text-sm font-medium"
-            />
-            <button
-              type="button"
-              onClick={() => stepper("private_rooms_count", 1, 1)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
-            >
-              +
-            </button>
-          </div>
-        </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500">
+                      Count
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => stepper(group.countField, -1, 1)}
+                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        value={form[group.countField]}
+                        onChange={(e) =>
+                          update({
+                            [group.countField]: Number(e.target.value) || 1,
+                          })
+                        }
+                        className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-sm font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => stepper(group.countField, 1, 1)}
+                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

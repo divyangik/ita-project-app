@@ -2,6 +2,7 @@ from decimal import Decimal
 from datetime import date
 from typing import List
 from pydantic import BaseModel
+from datetime import date, datetime 
 
 class PackageCreate(BaseModel):
     title: str
@@ -29,15 +30,6 @@ class PackageUpdate(BaseModel):
     shopify_collection_id: str | None = None
 
 
-class PackageResponse(PackageCreate):
-    id: int
-    package_code: str
-    shop_domain: str
-
-    class Config:
-        from_attributes = True
-
-
 class TourInfoBase(BaseModel):
     tour_title: str | None = None
     duration_label: str | None = None
@@ -57,7 +49,8 @@ class TourInfoBase(BaseModel):
     tour_type_tags: List[str] = []
 
     featured: bool = False
-
+    product_code: str | None = None
+    custom_date_message: str | None = None
 
 class TourInfoCreate(TourInfoBase):
     pass
@@ -123,11 +116,19 @@ class TourCapacityBase(BaseModel):
     private_rooms_type: str | None = None
     private_rooms_price: int = 0
     private_rooms_count: int = 1
+    
+    couple_room_type: str | None = None
+    couple_room_price: int = 0
+    couple_room_count: int = 1
 
+    child_room_type: str | None = None
+    child_room_price: int = 0
+    child_room_count: int = 1
 class PackageResponse(PackageCreate):
     id: int
     package_code: str
     shop_domain: str
+    created_at: datetime
     tour_dates: List["TourDateResponse"] = []
 
     class Config:
@@ -248,7 +249,8 @@ class TourIncludesBase(BaseModel):
     enquiry_email_or_url: str | None = None
 
     show_selection_summary: bool = False
-
+    itinerary_pdf: str | None = None
+    itinerary_pdf_filename: str | None = None
 
 class TourIncludesCreate(TourIncludesBase):
     pass
@@ -288,3 +290,35 @@ class EnquiryResponse(EnquiryBase):
     class Config:
         from_attributes = True
 
+class PackageCountryBase(BaseModel):
+    name: str
+    display_order: int = 1
+
+
+class PackageCountryCreate(PackageCountryBase):
+    pass
+
+
+class PackageCountryResponse(PackageCountryBase):
+    id: int
+    package_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class PackageCityBase(BaseModel):
+    name: str
+    display_order: int = 1
+
+
+class PackageCityCreate(PackageCityBase):
+    pass
+
+
+class PackageCityResponse(PackageCityBase):
+    id: int
+    package_id: int
+
+    class Config:
+        from_attributes = True

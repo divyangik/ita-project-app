@@ -30,6 +30,12 @@ import {
   deleteGuestAddon,
   getTourIncludes,
   saveTourIncludes,
+  getPackageCountries,
+  addPackageCountry,
+  deletePackageCountry,
+  getPackageCities,
+  addPackageCity,
+  deletePackageCity,
 } from "../lib/python.server";
 
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -41,6 +47,9 @@ import PricingTab from "../components/layout/package/PricingTab";
 import GuestAddonsTable from "../components/layout/package/GuestAddonsTable";
 import IncludesTab from "../components/layout/package/IncludesTab";
 import Toast from "../components/layout/ui/Toast";
+import ChipRepeater from "../components/layout/shared/ChipRepeater";
+import TourDatesRepeater from "../components/layout/shared/TourDatesRepeater";
+import { FieldError, inputClass } from "../components/layout/shared/formValidation";
 
 export async function loader({ params, request }) {
   const { session, admin } = await authenticate.admin(request);
@@ -84,6 +93,20 @@ export async function loader({ params, request }) {
     guestAddons = [];
   }
 
+  let countries = [];
+  try {
+    countries = (await getPackageCountries(packageData.id)) || [];
+  } catch {
+    countries = [];
+  }
+
+  let cities = [];
+  try {
+    cities = (await getPackageCities(packageData.id)) || [];
+  } catch {
+    cities = [];
+  }
+
   // If this package is linked to a Shopify product, pull live details
   let shopifyProduct = null;
   if (packageData.shopify_product_id) {
@@ -121,6 +144,8 @@ export async function loader({ params, request }) {
     tourPayment,
     guestAddons,
     tourIncludes,
+    countries,
+    cities,
     shopifyProduct,
   };
 }
@@ -163,15 +188,45 @@ export async function action({ request, params }) {
   if (intent === "save-capacity") {
     const capacityData = JSON.parse(formData.get("capacity_json"));
 
+    function numOrNull(v) {
+      return v === "" || v === null || v === undefined ? null : Number(v);
+    }
+    function numOrZero(v) {
+      return v === "" || v === null || v === undefined ? 0 : Number(v);
+    }
+
     const sanitized = {
       ...capacityData,
-      maximum_age:
-        capacityData.maximum_age === "" || capacityData.maximum_age === null
-          ? null
-          : Number(capacityData.maximum_age),
+      maximum_age: numOrNull(capacityData.maximum_age),
+      extra_nights_price: numOrZero(capacityData.extra_nights_price),
+      extra_nights_count: numOrZero(capacityData.extra_nights_count) || 1,
+      private_rooms_price: numOrZero(capacityData.private_rooms_price),
+      private_rooms_count: numOrZero(capacityData.private_rooms_count) || 1,
+      couple_room_price: numOrZero(capacityData.couple_room_price),
+      couple_room_count: numOrZero(capacityData.couple_room_count) || 1,
+      child_room_price: numOrZero(capacityData.child_room_price),
+      child_room_count: numOrZero(capacityData.child_room_count) || 1,
     };
 
     await saveTourCapacity(params.id, sanitized);
+    return { saved: true, savedAt: Date.now() };
+  }
+
+  if (intent === "save-itinerary") {
+    const itineraryData = JSON.parse(formData.get("itinerary_json"));
+
+    // product_code + custom_date_message live on TourInfo
+    await saveTourInfo(params.id, {
+      product_code: itineraryData.product_code,
+      custom_date_message: itineraryData.custom_date_message,
+    });
+
+    // itinerary_pdf lives alongside hero_image on TourIncludes
+    await saveTourIncludes(params.id, {
+      itinerary_pdf: itineraryData.itinerary_pdf,
+      itinerary_pdf_filename: itineraryData.itinerary_pdf_filename,
+    });
+
     return { saved: true, savedAt: Date.now() };
   }
 
@@ -204,6 +259,32 @@ export async function action({ request, params }) {
 
   if (intent === "delete-date") {
     await deleteTourDate(Number(formData.get("date_id")));
+    return { saved: true, savedAt: Date.now() };
+  }
+
+  if (intent === "add-country") {
+    const created = await addPackageCountry(params.id, {
+      name: formData.get("name"),
+      display_order: Number(formData.get("display_order")) || 1,
+    });
+    return { saved: true, savedAt: Date.now(), country: created };
+  }
+
+  if (intent === "delete-country") {
+    await deletePackageCountry(params.id, Number(formData.get("country_id")));
+    return { saved: true, savedAt: Date.now() };
+  }
+
+  if (intent === "add-city") {
+    const created = await addPackageCity(params.id, {
+      name: formData.get("name"),
+      display_order: Number(formData.get("display_order")) || 1,
+    });
+    return { saved: true, savedAt: Date.now(), city: created };
+  }
+
+  if (intent === "delete-city") {
+    await deletePackageCity(params.id, Number(formData.get("city_id")));
     return { saved: true, savedAt: Date.now() };
   }
 
@@ -253,6 +334,8 @@ export default function EditPackage() {
     tourPayment,
     guestAddons,
     tourIncludes,
+    countries: initialCountries,
+    cities: initialCities,
     shopifyProduct,
   } = useLoaderData();
 
@@ -266,6 +349,9 @@ export default function EditPackage() {
   const addonsFetcher = useFetcher();
   const publishFetcher = useFetcher();
   const includesFetcher = useFetcher();
+  const itineraryFetcher = useFetcher();
+  const countriesFetcher = useFetcher();
+  const citiesFetcher = useFetcher();
 
   const [activeTab, setActiveTab] = useState("tour-info");
   const [showToast, setShowToast] = useState(false);
@@ -283,13 +369,21 @@ export default function EditPackage() {
     visa_required: tourCapacity.visa_required ?? false,
     notes: tourCapacity.notes || "",
 
-    // -------- New fields --------
     custom_package_type: tourCapacity.custom_package_type || "",
     custom_package_message: tourCapacity.custom_package_message || "",
     extra_nights_type: tourCapacity.extra_nights_type || "",
     extra_nights_price: tourCapacity.extra_nights_price ?? 0,
+    extra_nights_count: tourCapacity.extra_nights_count ?? 1,
     private_rooms_type: tourCapacity.private_rooms_type || "",
     private_rooms_price: tourCapacity.private_rooms_price ?? 0,
+    private_rooms_count: tourCapacity.private_rooms_count ?? 1,
+
+    couple_room_type: tourCapacity.couple_room_type || "",
+    couple_room_price: tourCapacity.couple_room_price ?? 0,
+    couple_room_count: tourCapacity.couple_room_count ?? 1,
+    child_room_type: tourCapacity.child_room_type || "",
+    child_room_price: tourCapacity.child_room_price ?? 0,
+    child_room_count: tourCapacity.child_room_count ?? 1,
   }));
 
   const [pricingForm, setPricingForm] = useState(() => ({
@@ -328,6 +422,22 @@ export default function EditPackage() {
     secondary_url: tourIncludes.secondary_url || "",
     show_selection_summary: tourIncludes.show_selection_summary ?? false,
   }));
+
+  // -------- Itinerary tab state (countries, cities, product code, PDF) --------
+  const [countries, setCountries] = useState(initialCountries || []);
+  const [cities, setCities] = useState(initialCities || []);
+  const [productCode, setProductCode] = useState(tourInfo?.product_code || "");
+  const [customDateMessage, setCustomDateMessage] = useState(
+    tourInfo?.custom_date_message || "",
+  );
+  const [itineraryPdf, setItineraryPdf] = useState(
+    tourIncludes?.itinerary_pdf || null,
+  );
+  const [itineraryPdfName, setItineraryPdfName] = useState(
+    tourIncludes?.itinerary_pdf_filename || "",
+  );
+  const [itineraryPdfError, setItineraryPdfError] = useState("");
+  const [itineraryTouched, setItineraryTouched] = useState({});
 
   const isSaving = navigation.state === "submitting";
 
@@ -391,6 +501,27 @@ export default function EditPackage() {
     }
   }, [includesFetcher.data]);
 
+  useEffect(() => {
+    if (itineraryFetcher.data?.saved) {
+      setShowToast(true);
+      const timer = setTimeout(() => setShowToast(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [itineraryFetcher.data]);
+
+  // Reconcile local countries/cities state once the server confirms add/delete
+  useEffect(() => {
+    if (countriesFetcher.data?.country) {
+      setCountries((prev) => [...prev, countriesFetcher.data.country]);
+    }
+  }, [countriesFetcher.data]);
+
+  useEffect(() => {
+    if (citiesFetcher.data?.city) {
+      setCities((prev) => [...prev, citiesFetcher.data.city]);
+    }
+  }, [citiesFetcher.data]);
+
   // Handler functions
   function handleSaveCapacity() {
     capacityFetcher.submit(
@@ -424,12 +555,84 @@ export default function EditPackage() {
     );
   }
 
+  function handleSaveItinerary() {
+    itineraryFetcher.submit(
+      {
+        intent: "save-itinerary",
+        itinerary_json: JSON.stringify({
+          product_code: productCode,
+          custom_date_message: customDateMessage,
+          itinerary_pdf: itineraryPdf,
+          itinerary_pdf_filename: itineraryPdfName,
+        }),
+      },
+      { method: "post" },
+    );
+  }
+
   function handleTogglePublish() {
     const nextStatus = pkg.status === "Published" ? "Draft" : "Published";
     publishFetcher.submit(
       { intent: "toggle-publish", next_status: nextStatus },
       { method: "post" },
     );
+  }
+
+  function addCountry(name) {
+    countriesFetcher.submit(
+      {
+        intent: "add-country",
+        name,
+        display_order: countries.length + 1,
+      },
+      { method: "post" },
+    );
+  }
+
+  function removeCountry(id) {
+    setCountries((prev) => prev.filter((c) => c.id !== id));
+    countriesFetcher.submit(
+      { intent: "delete-country", country_id: id },
+      { method: "post" },
+    );
+  }
+
+  function addCity(name) {
+    citiesFetcher.submit(
+      { intent: "add-city", name, display_order: cities.length + 1 },
+      { method: "post" },
+    );
+  }
+
+  function removeCity(id) {
+    setCities((prev) => prev.filter((c) => c.id !== id));
+    citiesFetcher.submit(
+      { intent: "delete-city", city_id: id },
+      { method: "post" },
+    );
+  }
+
+  function handlePdfChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      setItineraryPdfError("Please choose a PDF file.");
+      return;
+    }
+    const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_PDF_BYTES) {
+      setItineraryPdfError("PDF is larger than 10MB — please choose a smaller file.");
+      return;
+    }
+
+    setItineraryPdfError("");
+    const reader = new FileReader();
+    reader.onload = () => {
+      setItineraryPdf(reader.result); // data:application/pdf;base64,....
+      setItineraryPdfName(file.name);
+    };
+    reader.readAsDataURL(file);
   }
 
   const statusLabel = pkg.status === "Published" ? "Live" : pkg.status;
@@ -515,6 +718,17 @@ export default function EditPackage() {
               {includesFetcher.state !== "idle" ? "Saving…" : "Save changes"}
             </button>
           )}
+
+          {activeTab === "itinerary" && (
+            <button
+              type="button"
+              onClick={handleSaveItinerary}
+              disabled={itineraryFetcher.state !== "idle"}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              {itineraryFetcher.state !== "idle" ? "Saving…" : "Save changes"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -553,22 +767,88 @@ export default function EditPackage() {
       </div>
 
       {shopifyProduct && (
-        <div className="mb-5 flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/50 px-5 py-3 text-sm">
-          {shopifyProduct.featuredImage?.url && (
-            <img
-              src={shopifyProduct.featuredImage.url}
-              alt={shopifyProduct.featuredImage.altText || ""}
-              className="h-10 w-10 rounded-lg object-cover"
-            />
-          )}
-          <div className="flex-1">
-            <p className="font-medium text-blue-900">
-              Linked to Shopify product: {shopifyProduct.title}
-            </p>
-            <p className="text-xs text-blue-600">
-              Status: {shopifyProduct.status} · Price: $
-              {shopifyProduct.variants?.edges?.[0]?.node?.price}
-            </p>
+        <div className="mb-5 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex items-stretch">
+            <div className="relative h-28 w-28 flex-shrink-0 sm:h-32 sm:w-32">
+              {shopifyProduct.featuredImage?.url ? (
+                <img
+                  src={shopifyProduct.featuredImage.url}
+                  alt={shopifyProduct.featuredImage.altText || shopifyProduct.title}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 text-blue-300">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="h-10 w-10"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="9" cy="9" r="2" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-1 items-center justify-between gap-4 px-5 py-4">
+              <div className="min-w-0">
+                <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-blue-600">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path d="M20 12V8H6a2 2 0 010-4h12v4" />
+                    <path d="M4 6v12a2 2 0 002 2h14v-4" />
+                    <path d="M18 12a2 2 0 000 4h4v-4z" />
+                  </svg>
+                  Linked Shopify product
+                </div>
+                <p className="truncate text-base font-semibold text-gray-900">
+                  {shopifyProduct.title}
+                </p>
+                <div className="mt-1.5 flex items-center gap-3 text-sm text-gray-500">
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        shopifyProduct.status === "ACTIVE"
+                          ? "bg-green-500"
+                          : "bg-gray-400"
+                      }`}
+                    />
+                    {shopifyProduct.status === "ACTIVE"
+                      ? "Active"
+                      : shopifyProduct.status}
+                  </span>
+                  <span className="text-gray-300">·</span>
+                  <span className="font-medium text-gray-700">
+                    $
+                    {Number(
+                      shopifyProduct.variants?.edges?.[0]?.node?.price || 0,
+                    ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 sm:flex">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="h-3.5 w-3.5"
+                >
+                  <path d="M9 12l2 2 4-4" />
+                  <circle cx="12" cy="12" r="9" />
+                </svg>
+                Synced
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -627,14 +907,154 @@ export default function EditPackage() {
         <IncludesTab data={tourIncludes} onChange={setIncludesForm} />
       )}
 
-      {activeTab !== "tour-info" &&
-        activeTab !== "dates" &&
-        activeTab !== "pricing" &&
-        activeTab !== "includes" && (
-          <div className="rounded-xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-400">
-            This section isn't built yet.
+      {activeTab === "itinerary" && (
+        <div className="space-y-5">
+          <div className="overflow-hidden rounded-xl border border-indigo-100 bg-white">
+            <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50/80 to-white px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Country(s) to be Visited
+                </h3>
+              </div>
+            </div>
+            <div className="p-5">
+              <ChipRepeater
+                label=""
+                placeholder="Enter country name"
+                items={countries}
+                onAdd={addCountry}
+                onRemove={removeCountry}
+              />
+              {countries.length === 0 && (
+                <p className="mt-2 text-xs text-amber-600">
+                  Add at least one country so the itinerary map has something
+                  to show.
+                </p>
+              )}
+            </div>
           </div>
-        )}
+
+          <div className="overflow-hidden rounded-xl border border-indigo-100 bg-white">
+            <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50/80 to-white px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Cities to be Visited
+                </h3>
+              </div>
+            </div>
+            <div className="p-5">
+              <ChipRepeater
+                label=""
+                placeholder="Enter city name"
+                items={cities}
+                onAdd={addCity}
+                onRemove={removeCity}
+              />
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-rose-100 bg-white">
+            <div className="border-b border-rose-100 bg-gradient-to-r from-rose-50/80 to-white px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-rose-500" />
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Message for Custom Date
+                </h3>
+              </div>
+            </div>
+            <div className="p-5">
+              <input
+                type="text"
+                value={customDateMessage}
+                onChange={(e) => setCustomDateMessage(e.target.value)}
+                onBlur={() => setItineraryTouched((prev) => ({ ...prev, customDateMessage: true }))}
+                maxLength={200}
+                placeholder="e.g. Custom dates available on request — enquire for pricing"
+                className={inputClass(false, "rose")}
+              />
+              <p className="mt-1.5 text-xs text-gray-400">
+                {customDateMessage.length}/200 characters
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-amber-100 bg-white">
+            <div className="border-b border-amber-100 bg-gradient-to-r from-amber-50/80 to-white px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Product code (Rezdy)
+                </h3>
+              </div>
+            </div>
+            <div className="p-5">
+              <input
+                type="text"
+                value={productCode}
+                onChange={(e) =>
+                  setProductCode(e.target.value.toUpperCase().replace(/\s+/g, ""))
+                }
+                onBlur={() =>
+                  setItineraryTouched((prev) => ({ ...prev, productCode: true }))
+                }
+                placeholder="e.g. PANAMA-REAL-2026"
+                className={inputClass(
+                  itineraryTouched.productCode &&
+                    productCode &&
+                    !/^[A-Z0-9-]+$/.test(productCode),
+                  "amber",
+                )}
+              />
+              {itineraryTouched.productCode &&
+                productCode &&
+                !/^[A-Z0-9-]+$/.test(productCode) && (
+                  <FieldError message="Only letters, numbers, and hyphens allowed." />
+                )}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-teal-100 bg-white">
+            <div className="border-b border-teal-100 bg-gradient-to-r from-teal-50/80 to-white px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-teal-500" />
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Email Itinerary PDF
+                </h3>
+              </div>
+            </div>
+            <div className="p-5">
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={handlePdfChange}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-teal-600 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-teal-700"
+              />
+              {itineraryPdfError && (
+                <div className="mt-2">
+                  <FieldError message={itineraryPdfError} />
+                </div>
+              )}
+              {itineraryPdfName && !itineraryPdfError && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-teal-700">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-3.5 w-3.5"
+                  >
+                    <path d="M9 12l2 2 4-4" />
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                  {itineraryPdfName}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <Toast show={showToast} message="Changes saved successfully" />
     </DashboardLayout>

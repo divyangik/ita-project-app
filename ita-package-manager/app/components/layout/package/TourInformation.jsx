@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FieldError, inputClass } from "../shared/formValidation";
 
 const TOUR_TYPE_OPTIONS = [
   "Group Tour",
@@ -11,35 +12,84 @@ const TOUR_TYPE_OPTIONS = [
   "Wildlife",
 ];
 
-const REGION_OPTIONS = [
-  "Central America",
-  "South America",
-  "North America",
-  "Caribbean",
-];
+const SHORT_DESCRIPTION_MAX = 500;
+
+// Duration strings are stored as "10 Days / 9 Nights" (see NewPackage.jsx),
+// so days/nights are derived from pkg.duration rather than entered by hand.
+function parseDaysNights(durationLabel) {
+  const match = String(durationLabel || "").match(
+    /(\d+)\s*Days?\s*\/\s*(\d+)\s*Nights?/i,
+  );
+  if (!match) return { days: "", nights: "" };
+  return { days: match[1], nights: match[2] };
+}
 
 function buildInitialForm(data = {}, pkg = {}) {
+  const durationLabel = data.duration_label || pkg.duration || "";
+  const derived = parseDaysNights(durationLabel);
+  const startCity = data.start_city || "";
+
   return {
     tour_title: data.tour_title || pkg.title || "",
-    duration_label: data.duration_label || pkg.duration || "",
-    departure_city: data.departure_city || "",
-    start_city: data.start_city || "",
+    duration_label: durationLabel,
+    departure_city: startCity || data.departure_city || "",
+    start_city: startCity,
     end_city: data.end_city || "",
-    days: data.days || "",
-    nights: data.nights || "",
+    days: data.days || derived.days,
+    nights: data.nights || derived.nights,
     country: data.country || pkg.destination || "",
-    region: data.region || pkg.region || REGION_OPTIONS[0],
+    region: data.region || pkg.region || "",
     short_description: data.short_description || "",
     featured: data.featured || false,
   };
 }
 
+function validate(form) {
+  const errors = {};
+
+  if (!form.start_city.trim()) {
+    errors.start_city = "Start city is required.";
+  }
+  if (!form.end_city.trim()) {
+    errors.end_city = "End city is required.";
+  }
+  if (
+    form.start_city.trim() &&
+    form.end_city.trim() &&
+    form.start_city.trim().toLowerCase() === form.end_city.trim().toLowerCase()
+  ) {
+    errors.end_city = "End city should differ from start city.";
+  }
+  if (form.short_description.length > SHORT_DESCRIPTION_MAX) {
+    errors.short_description = `Keep it under ${SHORT_DESCRIPTION_MAX} characters (currently ${form.short_description.length}).`;
+  }
+
+  return errors;
+}
+
 export default function TourInformation({ data = {}, pkg = {} }) {
   const [form, setForm] = useState(() => buildInitialForm(data, pkg));
   const [selectedTags, setSelectedTags] = useState(data?.tour_type_tags || []);
+  const [touched, setTouched] = useState({});
+
+  const errors = validate(form);
+
+  function markTouched(field) {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  }
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
+
+    if (name === "start_city") {
+      setForm((prev) => ({
+        ...prev,
+        start_city: value,
+        departure_city: value,
+      }));
+      return;
+    }
+
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -54,9 +104,10 @@ export default function TourInformation({ data = {}, pkg = {} }) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-gray-200 bg-white p-6">
-        <div className="mb-5 flex items-start gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+      {/* Tour identity — blue accent */}
+      <div className="overflow-hidden rounded-xl border border-blue-100 bg-white">
+        <div className="flex items-start gap-3 border-b border-blue-100 bg-gradient-to-r from-blue-50/80 to-white px-6 py-5">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -78,7 +129,7 @@ export default function TourInformation({ data = {}, pkg = {} }) {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 p-6">
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
               Tour title
@@ -86,9 +137,13 @@ export default function TourInformation({ data = {}, pkg = {} }) {
             <input
               name="tour_title"
               value={form.tour_title}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              readOnly
+              className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 focus:outline-none focus:ring-0"
             />
+            <p className="mt-1 text-xs text-gray-400">
+              Synced from the linked Shopify package — edit it from the
+              package selection instead.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -99,12 +154,12 @@ export default function TourInformation({ data = {}, pkg = {} }) {
               <input
                 name="duration_label"
                 value={form.duration_label}
-                onChange={handleChange}
+                readOnly
                 placeholder="e.g. 7 Days, 1 Country, 1 City"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-0"
               />
               <p className="mt-1 text-xs text-gray-400">
-                Shown below the title on the product page
+                Set when the package's duration is created
               </p>
             </div>
             <div>
@@ -114,37 +169,50 @@ export default function TourInformation({ data = {}, pkg = {} }) {
               <input
                 name="departure_city"
                 value={form.departure_city}
-                onChange={handleChange}
-                placeholder="e.g. Belize"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                readOnly
+                placeholder="Same as start city"
+                className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-0"
               />
+              <p className="mt-1 text-xs text-gray-400">
+                Always matches start city
+              </p>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Start city
+                Start city <span className="text-red-500">*</span>
               </label>
               <input
                 name="start_city"
                 value={form.start_city}
                 onChange={handleChange}
+                onBlur={() => markTouched("start_city")}
                 placeholder="e.g. Los Angeles"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClass(
+                  touched.start_city && errors.start_city,
+                  "blue",
+                )}
               />
+              {touched.start_city && <FieldError message={errors.start_city} />}
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                End city
+                End city <span className="text-red-500">*</span>
               </label>
               <input
                 name="end_city"
                 value={form.end_city}
                 onChange={handleChange}
+                onBlur={() => markTouched("end_city")}
                 placeholder="e.g. San Francisco"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClass(
+                  touched.end_city && errors.end_city,
+                  "blue",
+                )}
               />
+              {touched.end_city && <FieldError message={errors.end_city} />}
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -152,44 +220,66 @@ export default function TourInformation({ data = {}, pkg = {} }) {
               </label>
               <div className="flex gap-2">
                 <input
-                  type="number"
+                  type="text"
                   name="days"
                   value={form.days}
-                  onChange={handleChange}
+                  readOnly
                   placeholder="Days"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-0"
                 />
                 <input
-                  type="number"
+                  type="text"
                   name="nights"
                   value={form.nights}
-                  onChange={handleChange}
+                  readOnly
                   placeholder="Nights"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-0"
                 />
               </div>
+              <p className="mt-1 text-xs text-gray-400">
+                Auto-filled from duration
+              </p>
             </div>
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Short description
-            </label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Short description
+              </label>
+              <span
+                className={`text-xs ${
+                  form.short_description.length > SHORT_DESCRIPTION_MAX
+                    ? "font-medium text-red-500"
+                    : "text-gray-400"
+                }`}
+              >
+                {form.short_description.length}/{SHORT_DESCRIPTION_MAX}
+              </span>
+            </div>
             <textarea
               rows={4}
               name="short_description"
               value={form.short_description}
               onChange={handleChange}
+              onBlur={() => markTouched("short_description")}
               placeholder="Describe the tour experience..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={inputClass(
+                touched.short_description && errors.short_description,
+                "blue",
+              )}
             />
+            {touched.short_description && (
+              <FieldError message={errors.short_description} />
+            )}
           </div>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6">
-        <div className="mb-5 flex items-start gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
+      {/* Tour type tags — purple accent */}
+      <div className="overflow-hidden rounded-xl border border-purple-100 bg-white">
+        <div className="flex items-start gap-3 border-b border-purple-100 bg-gradient-to-r from-purple-50/80 to-white px-6 py-5">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -203,50 +293,15 @@ export default function TourInformation({ data = {}, pkg = {} }) {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-900">
-              Categories & tags
+              Tour type tags
             </h3>
             <p className="text-xs text-gray-500">
-              Breadcrumb path and tour type labels
+              Click to toggle — active tags appear on the product page
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Region
-            </label>
-            <select
-              name="region"
-              value={form.region}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {REGION_OPTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Country
-            </label>
-            <input
-              name="country"
-              value={form.country}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Tour type tags
-          </h3>
-
+        <div className="p-6">
           <div className="flex flex-wrap gap-3">
             {TOUR_TYPE_OPTIONS.map((tag) => {
               const active = selectedTags.includes(tag);
@@ -256,10 +311,10 @@ export default function TourInformation({ data = {}, pkg = {} }) {
                   key={tag}
                   type="button"
                   onClick={() => toggleTag(tag)}
-                  className={`rounded-full border px-4 py-2 text-sm transition ${
+                  className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
                     active
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+                      ? "border-purple-600 bg-purple-600 text-white shadow-sm"
+                      : "border-gray-300 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50"
                   }`}
                 >
                   {tag}
@@ -268,27 +323,22 @@ export default function TourInformation({ data = {}, pkg = {} }) {
             })}
           </div>
 
+          {selectedTags.length === 0 && (
+            <p className="mt-3 text-xs text-amber-600">
+              No tags selected — the product page's filter chips won't match
+              this tour.
+            </p>
+          )}
+
           {selectedTags.map((tag) => (
             <input key={tag} type="hidden" name="tour_type_tags" value={tag} />
           ))}
-
-          <p className="mt-2 text-xs text-gray-500">
-            Click to toggle — active tags appear on the product page.
-          </p>
-        </div>
-
-        <div className="mt-4 flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="featured"
-            checked={form.featured}
-            onChange={handleChange}
-          />
-          <label className="text-sm font-medium text-gray-700">
-            Featured tour
-          </label>
         </div>
       </div>
+
+      <input type="hidden" name="country" value={form.country} />
+      <input type="hidden" name="region" value={form.region} />
+      {form.featured && <input type="hidden" name="featured" value="on" />}
     </div>
   );
 }

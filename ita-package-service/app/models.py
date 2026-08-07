@@ -141,6 +141,19 @@ class Package(Base):
         cascade="all, delete-orphan",
     )
 
+    countries = relationship(
+        "PackageCountry",
+        back_populates="package",
+        cascade="all, delete-orphan",
+        order_by="PackageCountry.display_order",
+    )
+
+    cities = relationship(
+        "PackageCity",
+        back_populates="package",
+        cascade="all, delete-orphan",
+        order_by="PackageCity.display_order",
+    )
 
 class TourInfo(Base):
     __tablename__ = "tour_info"
@@ -175,7 +188,8 @@ class TourInfo(Base):
     tour_type_tags = Column(Text, nullable=True)
 
     featured = Column(Boolean, default=False)
-
+    product_code = Column(String(100), nullable=True)
+    custom_date_message = Column(Text, nullable=True)
     created_at = Column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
@@ -289,6 +303,16 @@ class TourCapacity(Base):
     private_rooms_type = Column(String(255))
     private_rooms_price = Column(Integer, default=0)
     private_rooms_count = Column(Integer, default=1)
+
+    couple_room_type = Column(String(255))
+    couple_room_price = Column(Integer, default=0)
+    couple_room_count = Column(Integer, default=1)
+
+    child_room_type = Column(String(255))
+    child_room_price = Column(Integer, default=0)
+    child_room_count = Column(Integer, default=1)
+
+    deposit_amount = Column(DECIMAL(10, 2), default=0)
 
     created_at = Column(
         TIMESTAMP,
@@ -496,7 +520,8 @@ class TourHeroImages(Base):
     image_alt_text = Column(String(255))
 
     show_selection_summary = Column(Boolean, default=False)
-
+    itinerary_pdf = Column(LONGTEXT, nullable=True)
+    itinerary_pdf_filename = Column(String(255), nullable=True)
     created_at = Column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
@@ -536,3 +561,42 @@ class Enquiry(Base):
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
     )
+
+class PackageCountry(Base):
+    __tablename__ = "package_countries"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    package_id = Column(
+        Integer,
+        ForeignKey("packages.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    name = Column(String(150), nullable=False)
+    display_order = Column(Integer, default=1)
+
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+
+    package = relationship("Package", back_populates="countries")
+
+
+class PackageCity(Base):
+    __tablename__ = "package_cities"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    package_id = Column(
+        Integer,
+        ForeignKey("packages.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    name = Column(String(150), nullable=False)
+    display_order = Column(Integer, default=1)
+
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+
+    package = relationship("Package", back_populates="cities")
