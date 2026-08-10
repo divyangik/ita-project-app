@@ -1,111 +1,53 @@
-import { useState, useRef } from "react";
-import {
-  Building2,
-  Bus,
-  Camera,
-  Flag,
-  Utensils,
-  Coffee,
-  Plane,
-  ShieldCheck,
-  Waves,
-  Bike,
-  Sparkles,
-  Wifi,
-  ImagePlus,
-  Info,
-} from "lucide-react";
-import { FieldError, inputClass } from "../shared/formValidation";
+import { useEffect, useState } from "react";
+import { useFetcher } from "react-router";
+import { CheckCircle2, Pencil, Plus, Trash2, X } from "lucide-react";
 
-const INCLUDE_ITEMS = [
-  { key: "hotels", label: "Hotels", icon: Building2 },
-  { key: "transport", label: "Transport", icon: Bus },
-  { key: "sightseeing", label: "Sightseeing", icon: Camera },
-  { key: "activities", label: "Activities", icon: Flag },
-  { key: "food", label: "Food", icon: Utensils },
-  { key: "beverage", label: "Beverage", icon: Coffee },
-  { key: "flights", label: "Flights", icon: Plane },
-  { key: "insurance", label: "Insurance", icon: ShieldCheck },
-  { key: "water_sports", label: "Water sports", icon: Waves },
-  { key: "cycling", label: "Cycling", icon: Bike },
-  { key: "spa", label: "Spa", icon: Sparkles },
-  { key: "wifi", label: "Wi-Fi", icon: Wifi },
-];
-
-const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB, matches the UI copy
-
-function defaultForm(data = {}) {
+function defaultForm(data = {}, selectedIds = []) {
   return {
-    hotels: data.hotels ?? false,
-    transport: data.transport ?? false,
-    sightseeing: data.sightseeing ?? false,
-    activities: data.activities ?? false,
-    food: data.food ?? false,
-    beverage: data.beverage ?? false,
-    flights: data.flights ?? false,
-    insurance: data.insurance ?? false,
-    water_sports: data.water_sports ?? false,
-    cycling: data.cycling ?? false,
-    spa: data.spa ?? false,
-    wifi: data.wifi ?? false,
+    selected_option_ids: selectedIds,
 
+    // Not editable from this tab anymore, but kept so an existing
+    // package's saved values aren't wiped out when this tab saves.
     hero_image: data.hero_image ?? "",
     image_alt_text: data.image_alt_text ?? "",
-
     primary_label: data.primary_label ?? "",
     primary_url: data.primary_url ?? "",
     secondary_label: data.secondary_label ?? "",
     enquiry_email_or_url: data.enquiry_email_or_url ?? "",
-
     show_selection_summary: data.show_selection_summary ?? false,
   };
 }
 
-function isValidUrlOrPath(value) {
-  if (!value) return true;
-  return /^(https?:\/\/|\/|mailto:)/i.test(value.trim());
+function IconPreview({ svg, className = "h-5 w-5" }) {
+  if (!svg) return null;
+  return (
+    <span
+      className={`inline-flex items-center justify-center [&>svg]:h-full [&>svg]:w-full ${className}`}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
 }
 
-function validate(form) {
-  const errors = {};
-  const anyIncluded = INCLUDE_ITEMS.some(({ key }) => form[key]);
+export default function IncludesTab({ data, initialOptions = [], onChange }) {
+  const initialSelected = data.selected_option_ids || [];
 
-  if (!anyIncluded) {
-    errors.includes = "Select at least one included item.";
-  }
-  if (form.hero_image && !form.image_alt_text.trim()) {
-    errors.image_alt_text = "Alt text is required when a hero image is set.";
-  }
-  if (form.primary_label.trim() && !form.primary_url.trim()) {
-    errors.primary_url = "URL is required when a primary label is set.";
-  }
-  if (form.primary_url && !isValidUrlOrPath(form.primary_url)) {
-    errors.primary_url = "Must start with http(s):// or /";
-  }
-  if (
-    form.enquiry_email_or_url &&
-    !isValidUrlOrPath(form.enquiry_email_or_url) &&
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.enquiry_email_or_url.trim())
-  ) {
-    errors.enquiry_email_or_url =
-      "Enter a valid email, mailto:, URL, or path.";
-  }
+  const [form, setForm] = useState(() => defaultForm(data, initialSelected));
+  const [selectedIds, setSelectedIds] = useState(
+    () => new Set(initialSelected),
+  );
+  const [options, setOptions] = useState(initialOptions);
 
-  return errors;
-}
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [nameInput, setNameInput] = useState("");
+  const [svgInput, setSvgInput] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
 
-export default function IncludesTab({ data, onChange }) {
-  const [form, setForm] = useState(() => defaultForm(data));
-  const [isDragging, setIsDragging] = useState(false);
-  const [imageError, setImageError] = useState("");
-  const [touched, setTouched] = useState({});
-  const fileInputRef = useRef(null);
+  const crudFetcher = useFetcher();
+  const deleteFetcher = useFetcher();
 
-  const errors = validate(form);
-
-  function markTouched(field) {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-  }
+  const saving = crudFetcher.state !== "idle";
+  const deleting = deleteFetcher.state !== "idle";
 
   function update(patch) {
     const next = { ...form, ...patch };
@@ -113,302 +55,273 @@ export default function IncludesTab({ data, onChange }) {
     onChange?.(next);
   }
 
-  function toggleInclude(key) {
-    update({ [key]: !form[key] });
+  function toggleSelected(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      update({ selected_option_ids: Array.from(next) });
+      return next;
+    });
   }
 
-  function handleFile(file) {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setImageError("Please choose an image file (JPG or PNG).");
-      return;
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      setImageError("Image is larger than 2MB — please choose a smaller file.");
-      return;
-    }
-    setImageError("");
-    const reader = new FileReader();
-    reader.onload = () => {
-      update({ hero_image: reader.result });
-    };
-    reader.readAsDataURL(file);
+  function openAddForm() {
+    setEditingId(null);
+    setNameInput("");
+    setSvgInput("");
+    setManagerOpen(true);
   }
+
+  function openEditForm(option) {
+    setEditingId(option.id);
+    setNameInput(option.name);
+    setSvgInput(option.svg);
+    setManagerOpen(true);
+  }
+
+  function closeForm() {
+    setManagerOpen(false);
+    setEditingId(null);
+    setNameInput("");
+    setSvgInput("");
+  }
+
+  function handleSave(e) {
+    e.preventDefault();
+    if (!nameInput.trim() || !svgInput.trim()) return;
+
+    crudFetcher.submit(
+      {
+        intent: editingId ? "update" : "create",
+        ...(editingId ? { id: editingId } : {}),
+        name: nameInput.trim(),
+        svg: svgInput.trim(),
+      },
+      { method: "post", action: "/app/api/include-options" },
+    );
+  }
+
+  function handleDelete(option) {
+    if (!confirm(`Delete "${option.name}" from your includes library?`))
+      return;
+
+    setDeletingId(option.id);
+    deleteFetcher.submit(
+      { intent: "delete", id: option.id },
+      { method: "post", action: "/app/api/include-options" },
+    );
+  }
+
+  // New/updated option comes back from the API — merge into the list.
+  useEffect(() => {
+    if (!crudFetcher.data?.success || !crudFetcher.data?.option) return;
+
+    const saved = crudFetcher.data.option;
+    setOptions((prev) => {
+      const exists = prev.some((o) => o.id === saved.id);
+      return exists
+        ? prev.map((o) => (o.id === saved.id ? saved : o))
+        : [...prev, saved];
+    });
+    closeForm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crudFetcher.data]);
+
+  // Deletion confirmed — drop from the list and clear any selection of it.
+  useEffect(() => {
+    if (!deleteFetcher.data?.success || !deleteFetcher.data?.deletedId)
+      return;
+
+    const removedId = Number(deleteFetcher.data.deletedId);
+    setOptions((prev) => prev.filter((o) => o.id !== removedId));
+    setSelectedIds((prev) => {
+      if (!prev.has(removedId)) return prev;
+      const next = new Set(prev);
+      next.delete(removedId);
+      update({ selected_option_ids: Array.from(next) });
+      return next;
+    });
+    setDeletingId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deleteFetcher.data]);
 
   return (
     <div className="space-y-5">
-      {/* Package includes — blue accent */}
-      <section className="overflow-hidden rounded-xl border border-blue-100 bg-white">
-        <div className="flex items-start gap-2 border-b border-blue-100 bg-gradient-to-r from-blue-50/80 to-white px-5 py-4">
-          <svg
+      <section className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="mb-4 flex items-start gap-2">
+          <CheckCircle2
             className="mt-0.5 h-4 w-4 text-blue-600"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-              clipRule="evenodd"
-            />
-          </svg>
+            strokeWidth={1.75}
+          />
           <div>
             <h3 className="text-sm font-semibold text-gray-900">
               Package includes
             </h3>
             <p className="text-xs text-gray-500">
-              Toggle items shown in the "Tour Package Includes" section
+              Select the items shown in the "Tour Package Includes" section.
+              Hover a card to edit or remove it from your library.
             </p>
           </div>
         </div>
 
-        <div className="p-5">
+        {options.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-400">
+            No includes in your library yet — add your first one below.
+          </div>
+        ) : (
           <div className="flex flex-wrap gap-2">
-            {INCLUDE_ITEMS.map(({ key, label, icon: Icon }) => {
-              const active = form[key];
+            {options.map((option) => {
+              const active = selectedIds.has(option.id);
+              const isDeleting = deleting && deletingId === option.id;
+
               return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => toggleInclude(key)}
-                  aria-pressed={active}
-                  className={`flex w-[86px] flex-col items-center gap-2 rounded-lg border px-2 py-3 text-center transition-colors ${
-                    active
-                      ? "border-blue-500 bg-blue-50 shadow-sm"
-                      : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40"
-                  }`}
-                >
-                  <Icon
-                    className={`h-5 w-5 ${
-                      active ? "text-blue-600" : "text-gray-400"
-                    }`}
-                    strokeWidth={1.75}
-                  />
-                  <span
-                    className={`text-xs font-medium ${
-                      active ? "text-blue-700" : "text-gray-500"
+                <div key={option.id} className="group relative">
+                  <button
+                    type="button"
+                    onClick={() => toggleSelected(option.id)}
+                    aria-pressed={active}
+                    disabled={isDeleting}
+                    className={`flex w-[86px] flex-col items-center gap-2 rounded-lg border px-2 py-3 text-center transition-colors disabled:opacity-40 ${
+                      active
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 bg-white hover:border-gray-300"
                     }`}
                   >
-                    {label}
-                  </span>
-                </button>
+                    <IconPreview
+                      svg={option.svg}
+                      className={`h-5 w-5 ${
+                        active ? "text-blue-600" : "text-gray-400"
+                      }`}
+                    />
+                    <span
+                      className={`w-full truncate text-xs font-medium ${
+                        active ? "text-blue-700" : "text-gray-500"
+                      }`}
+                    >
+                      {option.name}
+                    </span>
+                  </button>
+
+                  <div className="absolute -right-1.5 -top-1.5 hidden gap-1 group-hover:flex">
+                    <button
+                      type="button"
+                      onClick={() => openEditForm(option)}
+                      aria-label={`Edit ${option.name}`}
+                      className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm hover:border-blue-300 hover:text-blue-600"
+                    >
+                      <Pencil className="h-2.5 w-2.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(option)}
+                      aria-label={`Delete ${option.name}`}
+                      className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm hover:border-red-300 hover:text-red-600"
+                    >
+                      <Trash2 className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                </div>
               );
             })}
           </div>
-          {errors.includes && (
-            <div className="mt-3">
-              <FieldError message={errors.includes} />
+        )}
+
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          {!managerOpen ? (
+            <button
+              type="button"
+              onClick={openAddForm}
+              className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add / edit includes
+            </button>
+          ) : (
+            <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {editingId ? "Edit include" : "New include"}
+                </p>
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  aria-label="Close"
+                  className="rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Name
+                    </label>
+                    <input
+                      type="text"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      placeholder="e.g. Networking"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Icon (SVG code)
+                    </label>
+                    <textarea
+                      value={svgInput}
+                      onChange={(e) => setSvgInput(e.target.value)}
+                      rows={4}
+                      placeholder='<svg viewBox="0 0 24 24">...</svg>'
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-xs text-gray-900 placeholder:text-gray-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-1.5">
+                  <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                    Preview
+                  </span>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-gray-200 bg-white">
+                    <IconPreview
+                      svg={svgInput}
+                      className="h-7 w-7 text-gray-700"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || !nameInput.trim() || !svgInput.trim()}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saving
+                    ? "Saving…"
+                    : editingId
+                      ? "Save changes"
+                      : "Add include"}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                {crudFetcher.data?.success === false && (
+                  <span className="text-xs text-red-600">
+                    {crudFetcher.data.error}
+                  </span>
+                )}
+              </div>
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Hero image — amber accent */}
-      <section className="overflow-hidden rounded-xl border border-amber-100 bg-white">
-        <div className="flex items-start gap-2 border-b border-amber-100 bg-gradient-to-r from-amber-50/80 to-white px-5 py-4">
-          <ImagePlus className="mt-0.5 h-4 w-4 text-amber-600" strokeWidth={1.75} />
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">Hero image</h3>
-            <p className="text-xs text-gray-500">
-              Main product image for the listing
-            </p>
-          </div>
-        </div>
-
-        <div className="p-5">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => handleFile(e.target.files?.[0])}
-          />
-
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-              handleFile(e.dataTransfer.files?.[0]);
-            }}
-            className={`flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors ${
-              isDragging
-                ? "border-amber-400 bg-amber-50"
-                : "border-gray-300 hover:border-amber-300 hover:bg-amber-50/30"
-            }`}
-          >
-            {form.hero_image ? (
-              <img
-                src={form.hero_image}
-                alt={form.image_alt_text || "Hero preview"}
-                className="max-h-48 rounded-md object-contain"
-              />
-            ) : (
-              <>
-                <ImagePlus
-                  className="mb-2 h-6 w-6 text-amber-400"
-                  strokeWidth={1.5}
-                />
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium text-amber-600">Click</span> to
-                  upload or drag an image here
-                </p>
-                <p className="mt-1 text-xs text-gray-400">
-                  Recommended 600 × 600px · JPG or PNG · Max 2MB
-                </p>
-              </>
-            )}
-          </div>
-          {imageError && (
-            <div className="mt-2">
-              <FieldError message={imageError} />
-            </div>
-          )}
-
-          <div className="mt-4">
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
-              Image alt text{" "}
-              {form.hero_image && <span className="text-red-500">*</span>}
-            </label>
-            <input
-              type="text"
-              value={form.image_alt_text}
-              onChange={(e) => update({ image_alt_text: e.target.value })}
-              onBlur={() => markTouched("image_alt_text")}
-              placeholder="Describe the image for accessibility..."
-              className={inputClass(
-                touched.image_alt_text && errors.image_alt_text,
-                "amber",
-              )}
-            />
-            {touched.image_alt_text && (
-              <FieldError message={errors.image_alt_text} />
-            )}
-            <p className="mt-1 text-xs text-gray-400">
-              Required for accessibility and SEO
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA buttons — teal accent */}
-      <section className="overflow-hidden rounded-xl border border-teal-100 bg-white">
-        <div className="flex items-start gap-2 border-b border-teal-100 bg-gradient-to-r from-teal-50/80 to-white px-5 py-4">
-          <Info className="mt-0.5 h-4 w-4 text-teal-600" strokeWidth={1.75} />
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">CTA buttons</h3>
-            <p className="text-xs text-gray-500">
-              Labels and links for the booking widget buttons
-            </p>
-          </div>
-        </div>
-
-        <div className="p-5">
-          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
-                Primary label
-              </label>
-              <input
-                type="text"
-                value={form.primary_label}
-                onChange={(e) => update({ primary_label: e.target.value })}
-                placeholder="Book Online"
-                className={inputClass(false, "teal")}
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
-                Primary URL
-              </label>
-              <input
-                type="text"
-                value={form.primary_url}
-                onChange={(e) => update({ primary_url: e.target.value })}
-                onBlur={() => markTouched("primary_url")}
-                placeholder="/checkout"
-                className={inputClass(
-                  touched.primary_url && errors.primary_url,
-                  "teal",
-                )}
-              />
-              {touched.primary_url && (
-                <FieldError message={errors.primary_url} />
-              )}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
-                Secondary label
-              </label>
-              <input
-                type="text"
-                value={form.secondary_label}
-                onChange={(e) => update({ secondary_label: e.target.value })}
-                placeholder="Enquire Now"
-                className={inputClass(false, "teal")}
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
-                Enquiry email or URL
-              </label>
-              <input
-                type="text"
-                value={form.enquiry_email_or_url}
-                onChange={(e) =>
-                  update({ enquiry_email_or_url: e.target.value })
-                }
-                onBlur={() => markTouched("enquiry_email_or_url")}
-                placeholder="mailto:info@example.com"
-                className={inputClass(
-                  touched.enquiry_email_or_url && errors.enquiry_email_or_url,
-                  "teal",
-                )}
-              />
-              {touched.enquiry_email_or_url && (
-                <FieldError message={errors.enquiry_email_or_url} />
-              )}
-            </div>
-          </div>
-
-          <div className="mt-5 border-t border-gray-100 pt-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-              Show "your selection" summary
-            </p>
-            <label className="flex cursor-pointer items-center gap-3">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={form.show_selection_summary}
-                onClick={() =>
-                  update({
-                    show_selection_summary: !form.show_selection_summary,
-                  })
-                }
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  form.show_selection_summary ? "bg-teal-600" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                    form.show_selection_summary
-                      ? "translate-x-4.5"
-                      : "translate-x-1"
-                  }`}
-                />
-              </button>
-              <span className="text-sm text-gray-600">
-                Show traveler summary above buttons
-              </span>
-            </label>
-          </div>
         </div>
       </section>
     </div>

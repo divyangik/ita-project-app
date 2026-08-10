@@ -27,7 +27,7 @@ class Package(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     package_code = Column(String(50), unique=True, nullable=False)
-    shop_domain = Column(String(255), nullable=False, index=True)
+    shop_domain = Column(String(255), nullable=False)
 
     title = Column(String(255), nullable=False)
     destination = Column(String(255), nullable=False)
@@ -141,18 +141,24 @@ class Package(Base):
         cascade="all, delete-orphan",
     )
 
+    tour_itinerary = relationship(
+        "TourItinerary",
+        back_populates="package",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    # One Package -> Many PackageCountry
     countries = relationship(
         "PackageCountry",
         back_populates="package",
         cascade="all, delete-orphan",
-        order_by="PackageCountry.display_order",
     )
 
+    # One Package -> Many PackageCity
     cities = relationship(
         "PackageCity",
         back_populates="package",
         cascade="all, delete-orphan",
-        order_by="PackageCity.display_order",
     )
 
 class TourInfo(Base):
@@ -188,8 +194,7 @@ class TourInfo(Base):
     tour_type_tags = Column(Text, nullable=True)
 
     featured = Column(Boolean, default=False)
-    product_code = Column(String(100), nullable=True)
-    custom_date_message = Column(Text, nullable=True)
+
     created_at = Column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
@@ -216,10 +221,9 @@ class TourDate(Base):
         Integer,
         ForeignKey("packages.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
 
-    departure_date = Column(Date, nullable=False, index=True)
+    departure_date = Column(Date, nullable=False)
     return_date = Column(Date, nullable=False)
 
     seats_total = Column(Integer, default=0)
@@ -303,16 +307,6 @@ class TourCapacity(Base):
     private_rooms_type = Column(String(255))
     private_rooms_price = Column(Integer, default=0)
     private_rooms_count = Column(Integer, default=1)
-
-    couple_room_type = Column(String(255))
-    couple_room_price = Column(Integer, default=0)
-    couple_room_count = Column(Integer, default=1)
-
-    child_room_type = Column(String(255))
-    child_room_price = Column(Integer, default=0)
-    child_room_count = Column(Integer, default=1)
-
-    deposit_amount = Column(DECIMAL(10, 2), default=0)
 
     created_at = Column(
         TIMESTAMP,
@@ -520,8 +514,7 @@ class TourHeroImages(Base):
     image_alt_text = Column(String(255))
 
     show_selection_summary = Column(Boolean, default=False)
-    itinerary_pdf = Column(LONGTEXT, nullable=True)
-    itinerary_pdf_filename = Column(String(255), nullable=True)
+
     created_at = Column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
@@ -534,6 +527,46 @@ class TourHeroImages(Base):
     )
 
     package = relationship("Package", back_populates="tour_hero_images")
+
+
+class IncludeOption(Base):
+    """Shop-level library of 'package includes' items (name + icon SVG)."""
+
+    __tablename__ = "include_options"
+
+    id = Column(Integer, primary_key=True, index=True)
+    shop_domain = Column(String(255), nullable=False)
+
+    name = Column(String(100), nullable=False)
+    svg = Column(Text, nullable=False)
+
+    display_order = Column(Integer, default=0)
+
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = Column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+        server_onupdate=text("CURRENT_TIMESTAMP"),
+    )
+
+
+class PackageIncludeSelection(Base):
+    """Which include_options are toggled on for a given package."""
+
+    __tablename__ = "package_include_selections"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    package_id = Column(
+        Integer,
+        ForeignKey("packages.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    include_option_id = Column(
+        Integer,
+        ForeignKey("include_options.id", ondelete="CASCADE"),
+        nullable=False,
+    )
 
 
 class Enquiry(Base):
@@ -600,3 +633,22 @@ class PackageCity(Base):
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
 
     package = relationship("Package", back_populates="cities")
+
+class TourItinerary(Base):
+    __tablename__ = "tour_itinerary"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    package_id = Column(
+        Integer,
+        ForeignKey("packages.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+
+    itinerary_pdf_url = Column(String(500), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    package = relationship("Package", back_populates="tour_itinerary")

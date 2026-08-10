@@ -393,6 +393,109 @@ export async function saveTourIncludes(packageId, data) {
   return response.json();
 }
 
+// -------------------- Include Options (shop-level library) --------------------
+
+export async function getIncludeOptions(shop) {
+  const response = await fetch(
+    `${BASE_URL}/include-options?shop=${encodeURIComponent(shop)}`,
+    { headers },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+export async function createIncludeOption(shop, data) {
+  const response = await fetch(
+    `${BASE_URL}/include-options?shop=${encodeURIComponent(shop)}`,
+    {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Failed to create include option: ${response.status} ${errorBody}`,
+    );
+  }
+
+  return response.json();
+}
+
+export async function updateIncludeOption(optionId, data) {
+  const response = await fetch(`${BASE_URL}/include-options/${optionId}`, {
+    method: "PATCH",
+    headers: jsonHeaders,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Failed to update include option: ${response.status} ${errorBody}`,
+    );
+  }
+
+  return response.json();
+}
+
+export async function deleteIncludeOption(optionId) {
+  const response = await fetch(`${BASE_URL}/include-options/${optionId}`, {
+    method: "DELETE",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Failed to delete include option: ${response.status} ${errorBody}`,
+    );
+  }
+
+  return response.json();
+}
+
+// -------------------- Package Include Selections --------------------
+
+export async function getPackageIncludeSelections(packageId) {
+  const response = await fetch(
+    `${BASE_URL}/package-include-selections/${packageId}`,
+    { headers },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+export async function savePackageIncludeSelections(packageId, optionIds) {
+  const response = await fetch(
+    `${BASE_URL}/package-include-selections/${packageId}`,
+    {
+      method: "PUT",
+      headers: jsonHeaders,
+      body: JSON.stringify({ option_ids: optionIds }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Failed to save include selections: ${response.status} ${errorBody}`,
+    );
+  }
+
+  return response.json();
+}
+
 // -------------------- Enquiries --------------------
 
 export async function getEnquiries(shop) {
@@ -478,3 +581,61 @@ export async function getStorefrontPackage(shopifyProductId) {
   return response.json();
 }
 
+export async function getTourItinerary(packageId) {
+  const response = await fetch(`${BASE_URL}/tour-itinerary/${packageId}`, { headers });
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to load itinerary: ${response.status} ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+export async function saveTourItinerary(packageId, data) {
+  const response = await fetch(`${BASE_URL}/tour-itinerary/${packageId}`, {
+    method: "PUT",
+    headers: jsonHeaders,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to save itinerary: ${response.status} ${errorBody}`);
+  }
+
+  return response.json();
+}
+export async function uploadItineraryPdf(packageId, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${BASE_URL}/tour-itinerary/${packageId}/upload-pdf`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to upload itinerary PDF: ${response.status} ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+export async function deleteItineraryPdf(packageId) {
+  const response = await fetch(`${BASE_URL}/tour-itinerary/${packageId}/pdf`, {
+    method: "DELETE",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to delete itinerary PDF: ${response.status} ${errorBody}`);
+  }
+
+  return response.json();
+}
