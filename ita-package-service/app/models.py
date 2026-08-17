@@ -147,6 +147,14 @@ class Package(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+
+    # One Package -> Many TourProductAddon
+    product_addons = relationship(
+        "TourProductAddon",
+        back_populates="package",
+        cascade="all, delete-orphan",
+    )
+    
     # One Package -> Many PackageCountry
     countries = relationship(
         "PackageCountry",
@@ -192,6 +200,10 @@ class TourInfo(Base):
     # Stored as:
     # "Adventure,Beach,Group Tour"
     tour_type_tags = Column(Text, nullable=True)
+
+    # Stored as comma-separated text, same pattern as tour_type_tags.
+    package_type_tags = Column(Text, nullable=True)
+    traveller_types = Column(Text, nullable=True)
 
     featured = Column(Boolean, default=False)
 
@@ -308,6 +320,14 @@ class TourCapacity(Base):
     private_rooms_price = Column(Integer, default=0)
     private_rooms_count = Column(Integer, default=1)
 
+    couple_room_type = Column(String(255))
+    couple_room_price = Column(Integer, default=0)
+    couple_room_count = Column(Integer, default=1)
+
+    child_room_type = Column(String(255))
+    child_room_price = Column(Integer, default=0)
+    child_room_count = Column(Integer, default=1)
+
     created_at = Column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
@@ -371,15 +391,9 @@ class TourPaymentOption(Base):
 
     deposit_amount = Column(Numeric(10, 2), default=0)
 
-    balance_amount = Column(Numeric(10, 2), default=0)
-
     number_of_installments = Column(Integer, default=1)
 
-    installment_label = Column(String(255))
-
     option_label = Column(String(255))
-
-    cta_text = Column(String(255))
 
     show_deal_price_badge = Column(Boolean, default=True)
 
@@ -529,6 +543,33 @@ class TourHeroImages(Base):
     package = relationship("Package", back_populates="tour_hero_images")
 
 
+class GuestCategoryOption(Base):
+    """Shop-level library of Package Type / Traveller / Tour Type options.
+
+    `kind` distinguishes the lists ("package_type", "traveller", or
+    "tour_type") so all are managed from one table, one settings page,
+    one CRUD route.
+    """
+
+    __tablename__ = "guest_category_options"
+
+    id = Column(Integer, primary_key=True, index=True)
+    shop_domain = Column(String(255), nullable=False)
+
+    kind = Column(String(30), nullable=False)  # "package_type" | "traveller" | "tour_type"
+    name = Column(String(100), nullable=False)
+    value = Column(String(100), nullable=False)
+
+    display_order = Column(Integer, default=0)
+
+    created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = Column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+        server_onupdate=text("CURRENT_TIMESTAMP"),
+    )
+
+
 class IncludeOption(Base):
     """Shop-level library of 'package includes' items (name + icon SVG)."""
 
@@ -652,3 +693,24 @@ class TourItinerary(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     package = relationship("Package", back_populates="tour_itinerary")
+
+class TourProductAddon(Base):
+    __tablename__ = "tour_product_addons"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    package_id = Column(
+        Integer,
+        ForeignKey("packages.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    shopify_product_id = Column(String(100), nullable=False)
+    shopify_variant_id = Column(String(100), nullable=True)
+    product_title = Column(String(255), nullable=False)
+    price = Column(Numeric(10, 2), nullable=True)
+    image_url = Column(String(500), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    package = relationship("Package", back_populates="product_addons")

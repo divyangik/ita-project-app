@@ -56,6 +56,12 @@ class TourInfoBase(BaseModel):
 
     tour_type_tags: List[str] = []
 
+    # Stored as comma-separated text, same pattern as tour_type_tags.
+    # package_type_tags: e.g. "Regular", "Senior", "Couple", "New"
+    # traveller_types: e.g. "Child", "Infant"
+    package_type_tags: List[str] = []
+    traveller_types: List[str] = []
+
     featured: bool = False
 
 
@@ -64,6 +70,40 @@ class TourInfoCreate(TourInfoBase):
 
 
 class TourInfoResponse(TourInfoBase):
+    id: int
+    package_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class PackageCountryBase(BaseModel):
+    name: str
+    display_order: int = 1
+
+
+class PackageCountryCreate(PackageCountryBase):
+    pass
+
+
+class PackageCountryResponse(PackageCountryBase):
+    id: int
+    package_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class PackageCityBase(BaseModel):
+    name: str
+    display_order: int = 1
+
+
+class PackageCityCreate(PackageCityBase):
+    pass
+
+
+class PackageCityResponse(PackageCityBase):
     id: int
     package_id: int
 
@@ -124,6 +164,14 @@ class TourCapacityBase(BaseModel):
     private_rooms_price: int = 0
     private_rooms_count: int = 1
 
+    couple_room_type: str | None = None
+    couple_room_price: int = 0
+    couple_room_count: int = 1
+
+    child_room_type: str | None = None
+    child_room_price: int = 0
+    child_room_count: int = 1
+
 
 class TourCapacityCreate(TourCapacityBase):
     pass
@@ -166,11 +214,8 @@ class TourPaymentBase(BaseModel):
     payment_status: str = "Unpaid"
     amount_received: Decimal = 0
     deposit_amount: Decimal = 0
-    balance_amount: Decimal = 0
     number_of_installments: int = 1
-    installment_label: str | None = None
     option_label: str | None = None
-    cta_text: str | None = None
     show_deal_price_badge: bool = True
     preselect_full_payment: bool = True
 
@@ -253,6 +298,31 @@ class TourIncludesResponse(TourIncludesBase):
         from_attributes = True
 
         
+class GuestCategoryOptionBase(BaseModel):
+    kind: str  # "package_type" | "traveller" | "tour_type"
+    name: str
+    value: str
+    display_order: int = 0
+
+
+class GuestCategoryOptionCreate(GuestCategoryOptionBase):
+    pass
+
+
+class GuestCategoryOptionUpdate(BaseModel):
+    name: str | None = None
+    value: str | None = None
+    display_order: int | None = None
+
+
+class GuestCategoryOptionResponse(GuestCategoryOptionBase):
+    id: int
+    shop_domain: str
+
+    class Config:
+        from_attributes = True
+
+
 class IncludeOptionBase(BaseModel):
     name: str
     svg: str
@@ -293,6 +363,11 @@ class EnquiryCreate(EnquiryBase):
     pass
 
 
+class EmailItineraryCreate(BaseModel):
+    name: str | None = None
+    email: str
+
+
 class EnquiryRespondUpdate(BaseModel):
     lead_responded: bool
 
@@ -316,6 +391,22 @@ class TourItineraryCreate(TourItineraryBase):
 
 
 class TourItineraryResponse(TourItineraryBase):
+    id: int
+    package_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class TourProductAddonCreate(BaseModel):
+    shopify_product_id: str
+    shopify_variant_id: str | None = None
+    product_title: str
+    price: Decimal | None = None
+    image_url: str | None = None
+
+
+class TourProductAddonResponse(TourProductAddonCreate):
     id: int
     package_id: int
 

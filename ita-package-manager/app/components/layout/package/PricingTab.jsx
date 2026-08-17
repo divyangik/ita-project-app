@@ -28,11 +28,8 @@ function buildPaymentInitial(data = {}) {
     payment_status: data.payment_status || "Unpaid",
     amount_received: data.amount_received ?? 0,
     deposit_amount: data.deposit_amount ?? 0,
-    balance_amount: data.balance_amount ?? 0,
     number_of_installments: data.number_of_installments ?? 1,
-    installment_label: data.installment_label || "",
     option_label: data.option_label || "",
-    cta_text: data.cta_text || "",
     show_deal_price_badge: data.show_deal_price_badge ?? true,
     preselect_full_payment: data.preselect_full_payment ?? true,
   };
@@ -48,27 +45,12 @@ function validate(pricingForm, paymentForm) {
     errors.price_per_person = "Price must be greater than 0.";
   }
 
-  const deposit = Number(paymentForm.deposit_amount) || 0;
-  const balance = Number(paymentForm.balance_amount) || 0;
+const deposit = Number(paymentForm.deposit_amount) || 0;
 
   if (deposit < 0) {
     errors.deposit_amount = "Deposit can't be negative.";
   } else if (!Number.isNaN(price) && price > 0 && deposit > price) {
     errors.deposit_amount = "Deposit can't exceed the price per person.";
-  }
-
-  if (balance < 0) {
-    errors.balance_amount = "Balance can't be negative.";
-  }
-
-  if (
-    !Number.isNaN(price) &&
-    price > 0 &&
-    deposit > 0 &&
-    balance > 0 &&
-    Math.abs(deposit + balance - price) > 0.01
-  ) {
-    errors.balance_amount = `Deposit + balance should equal $${price.toFixed(2)} (currently $${(deposit + balance).toFixed(2)}).`;
   }
 
   const installments = Number(paymentForm.number_of_installments);
@@ -124,7 +106,6 @@ export default function PricingTab({
     const numericFields = [
       "amount_received",
       "deposit_amount",
-      "balance_amount",
       "number_of_installments",
     ];
     updatePayment({
@@ -328,27 +309,6 @@ export default function PricingTab({
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Balance amount ($)
-                  </label>
-                  <input
-                    type="number"
-                    name="balance_amount"
-                    min="0"
-                    step="0.01"
-                    value={paymentForm.balance_amount}
-                    onChange={handlePaymentField}
-                    onBlur={() => markTouched("balance_amount")}
-                    className={inputClass(
-                      touched.balance_amount && errors.balance_amount,
-                      "amber",
-                    )}
-                  />
-                  {touched.balance_amount && (
-                    <FieldError message={errors.balance_amount} />
-                  )}
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Number of installments
                   </label>
                   <input
@@ -367,19 +327,6 @@ export default function PricingTab({
                   {touched.number_of_installments && (
                     <FieldError message={errors.number_of_installments} />
                   )}
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Installment label
-                  </label>
-                  <input
-                    type="text"
-                    name="installment_label"
-                    value={paymentForm.installment_label}
-                    onChange={handlePaymentField}
-                    placeholder="e.g. $631.67 x 2"
-                    className={inputClass(false, "amber")}
-                  />
                 </div>
               </div>
             </div>
@@ -404,19 +351,6 @@ export default function PricingTab({
                     value={paymentForm.option_label}
                     onChange={handlePaymentField}
                     placeholder="e.g. Deal Price"
-                    className={inputClass(false, "teal")}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    CTA text
-                  </label>
-                  <input
-                    type="text"
-                    name="cta_text"
-                    value={paymentForm.cta_text}
-                    onChange={handlePaymentField}
-                    placeholder="e.g. I want to pay full payment"
                     className={inputClass(false, "teal")}
                   />
                 </div>

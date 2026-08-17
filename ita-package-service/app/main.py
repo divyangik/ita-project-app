@@ -19,6 +19,10 @@ from .routes.enquiries import router as enquiry_router
 from .routes.storefront import router as storefront_router
 from fastapi.middleware.cors import CORSMiddleware
 from .routes.tour_itinerary import router as tour_itinerary_router
+from .routes.package_countries import router as package_countries_router
+from .routes.package_cities import router as package_cities_router
+from .routes.guest_category_options import router as guest_category_options_router
+from .routes.tour_product_addons import router as tour_product_addons_router
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
@@ -41,7 +45,7 @@ app.add_middleware(
         "https://ita3-0.myshopify.com",
         # "https://your-custom-domain.com",  # add when you have one
     ],
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -60,6 +64,10 @@ app.include_router(package_include_selections_router)
 app.include_router(enquiry_router)
 app.include_router(storefront_router)
 app.include_router(tour_itinerary_router)
+app.include_router(package_countries_router)
+app.include_router(package_cities_router)
+app.include_router(guest_category_options_router)
+app.include_router(tour_product_addons_router)
 
 
 

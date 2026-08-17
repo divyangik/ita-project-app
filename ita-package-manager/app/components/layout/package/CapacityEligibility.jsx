@@ -153,10 +153,10 @@ export default function CapacityEligibility({ data = {}, onChange }) {
 
         <div className="p-6">
           <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Custom message for package type
+            Custom Price for package type
           </label>
           <input
-            type="text"
+            type="number"
             value={form.custom_package_message}
             onChange={(e) => update({ custom_package_message: e.target.value })}
             className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"

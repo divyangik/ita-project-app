@@ -49,6 +49,16 @@ def get_tour_info(
             if info.tour_type_tags
             else []
         ),
+        "package_type_tags": (
+            info.package_type_tags.split(",")
+            if info.package_type_tags
+            else []
+        ),
+        "traveller_types": (
+            info.traveller_types.split(",")
+            if info.traveller_types
+            else []
+        ),
         "featured": info.featured,
     }
 
@@ -82,6 +92,8 @@ def save_tour_info(
 
     # Store tags as comma-separated string
     data["tour_type_tags"] = ",".join(data["tour_type_tags"])
+    data["package_type_tags"] = ",".join(data["package_type_tags"])
+    data["traveller_types"] = ",".join(data["traveller_types"])
 
     if info is None:
         info = TourInfo(
@@ -115,6 +127,16 @@ def save_tour_info(
             "tour_type_tags": (
                 info.tour_type_tags.split(",")
                 if info.tour_type_tags
+                else []
+            ),
+            "package_type_tags": (
+                info.package_type_tags.split(",")
+                if info.package_type_tags
+                else []
+            ),
+            "traveller_types": (
+                info.traveller_types.split(",")
+                if info.traveller_types
                 else []
             ),
             "featured": info.featured,

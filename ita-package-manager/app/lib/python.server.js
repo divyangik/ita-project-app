@@ -197,6 +197,102 @@ export async function deleteTourDate(dateId) {
   return response.json();
 }
 
+// -------------------- Package Countries --------------------
+
+export async function getPackageCountries(packageId, shop) {
+  const response = await fetch(
+    `${BASE_URL}/packages/${packageId}/countries?shop=${encodeURIComponent(shop)}`,
+    { headers },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+export async function addPackageCountry(packageId, shop, data) {
+  const response = await fetch(
+    `${BASE_URL}/packages/${packageId}/countries?shop=${encodeURIComponent(shop)}`,
+    {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+export async function deletePackageCountry(packageId, countryId, shop) {
+  const response = await fetch(
+    `${BASE_URL}/packages/${packageId}/countries/${countryId}?shop=${encodeURIComponent(shop)}`,
+    {
+      method: "DELETE",
+      headers,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+// -------------------- Package Cities --------------------
+
+export async function getPackageCities(packageId, shop) {
+  const response = await fetch(
+    `${BASE_URL}/packages/${packageId}/cities?shop=${encodeURIComponent(shop)}`,
+    { headers },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+export async function addPackageCity(packageId, shop, data) {
+  const response = await fetch(
+    `${BASE_URL}/packages/${packageId}/cities?shop=${encodeURIComponent(shop)}`,
+    {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+export async function deletePackageCity(packageId, cityId, shop) {
+  const response = await fetch(
+    `${BASE_URL}/packages/${packageId}/cities/${cityId}?shop=${encodeURIComponent(shop)}`,
+    {
+      method: "DELETE",
+      headers,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
 // -------------------- Tour Capacity --------------------
 
 export async function getTourCapacity(packageId) {
@@ -461,6 +557,82 @@ export async function deleteIncludeOption(optionId) {
   return response.json();
 }
 
+// -------------------- Guest Category Options (Package Type / Traveller / Tour Type) --------------------
+
+export async function getGuestCategoryOptions(shop, kind) {
+  const params = new URLSearchParams({ shop });
+  if (kind) params.set("kind", kind);
+
+  const response = await fetch(`${BASE_URL}/guest-category-options?${params}`, {
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+export async function createGuestCategoryOption(shop, data) {
+  const response = await fetch(
+    `${BASE_URL}/guest-category-options?shop=${encodeURIComponent(shop)}`,
+    {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Failed to create guest category option: ${response.status} ${errorBody}`,
+    );
+  }
+
+  return response.json();
+}
+
+export async function updateGuestCategoryOption(optionId, data) {
+  const response = await fetch(
+    `${BASE_URL}/guest-category-options/${optionId}`,
+    {
+      method: "PATCH",
+      headers: jsonHeaders,
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Failed to update guest category option: ${response.status} ${errorBody}`,
+    );
+  }
+
+  return response.json();
+}
+
+export async function deleteGuestCategoryOption(optionId) {
+  const response = await fetch(
+    `${BASE_URL}/guest-category-options/${optionId}`,
+    {
+      method: "DELETE",
+      headers,
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Failed to delete guest category option: ${response.status} ${errorBody}`,
+    );
+  }
+
+  return response.json();
+}
+
 // -------------------- Package Include Selections --------------------
 
 export async function getPackageIncludeSelections(packageId) {
@@ -635,6 +807,46 @@ export async function deleteItineraryPdf(packageId) {
   if (!response.ok) {
     const errorBody = await response.text();
     throw new Error(`Failed to delete itinerary PDF: ${response.status} ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+export async function getProductAddons(packageId) {
+  const response = await fetch(`${BASE_URL}/tour-product-addons/${packageId}`, { headers });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to load product addons: ${response.status} ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+export async function createProductAddon(packageId, data) {
+  const response = await fetch(`${BASE_URL}/tour-product-addons/${packageId}`, {
+    method: "POST",
+    headers: jsonHeaders,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to add product addon: ${response.status} ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+export async function deleteProductAddon(addonId) {
+  const response = await fetch(`${BASE_URL}/tour-product-addons/${addonId}`, {
+    method: "DELETE",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to delete product addon: ${response.status} ${errorBody}`);
   }
 
   return response.json();

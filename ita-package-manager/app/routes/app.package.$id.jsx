@@ -33,9 +33,19 @@ import {
   getIncludeOptions,
   getPackageIncludeSelections,
   savePackageIncludeSelections,
+  getGuestCategoryOptions,
   getTourItinerary,
   uploadItineraryPdf,
   deleteItineraryPdf,
+  getPackageCountries,
+  addPackageCountry,
+  deletePackageCountry,
+  getPackageCities,
+  addPackageCity,
+  deletePackageCity,
+  getProductAddons,
+  createProductAddon,
+  deleteProductAddon,
 } from "../lib/python.server";
 
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -78,6 +88,30 @@ export async function loader({ params, request }) {
     selectedIncludeIds = [];
   }
 
+  let packageTypeOptions = [];
+  try {
+    packageTypeOptions =
+      (await getGuestCategoryOptions(session.shop, "package_type")) || [];
+  } catch {
+    packageTypeOptions = [];
+  }
+
+  let travellerOptions = [];
+  try {
+    travellerOptions =
+      (await getGuestCategoryOptions(session.shop, "traveller")) || [];
+  } catch {
+    travellerOptions = [];
+  }
+
+  let tourTypeOptions = [];
+  try {
+    tourTypeOptions =
+      (await getGuestCategoryOptions(session.shop, "tour_type")) || [];
+  } catch {
+    tourTypeOptions = [];
+  }
+
   let tourCapacity = {};
   try {
     tourCapacity = (await getTourCapacity(packageData.id)) || {};
@@ -113,6 +147,27 @@ export async function loader({ params, request }) {
     tourItinerary = {};
   }
 
+  let productAddons = [];
+  try {
+    productAddons = (await getProductAddons(packageData.id)) || [];
+  } catch {
+    productAddons = [];
+  }
+
+  let countries = [];
+  try {
+    countries = (await getPackageCountries(packageData.id, session.shop)) || [];
+  } catch {
+    countries = [];
+  }
+
+  let cities = [];
+  try {
+    cities = (await getPackageCities(packageData.id, session.shop)) || [];
+  } catch {
+    cities = [];
+  }
+
   // If this package is linked to a Shopify product, pull live details
   let shopifyProduct = null;
   if (packageData.shopify_product_id) {
@@ -143,6 +198,50 @@ export async function loader({ params, request }) {
     }
   }
 
+  // Products available for the "Product Addon" dropdown — always pulled from
+  // the dedicated T-shirt collection, NOT the package's own linked travel
+  // collection. Set TSHIRT_COLLECTION_HANDLE in your env if the handle in
+  // your store differs from the default "t-shirts".
+  const TSHIRT_COLLECTION_HANDLE =
+    process.env.TSHIRT_COLLECTION_HANDLE || "t-shirts";
+
+  let collectionProducts = [];
+  try {
+    const response = await admin.graphql(
+      `#graphql
+      query GetTshirtCollectionProducts($handle: String!) {
+        collectionByHandle(handle: $handle) {
+          products(first: 50) {
+            edges {
+              node {
+                id
+                title
+                featuredImage { url }
+                variants(first: 1) { edges { node { id price } } }
+              }
+            }
+          }
+        }
+      }`,
+      {
+        variables: {
+          handle: TSHIRT_COLLECTION_HANDLE,
+        },
+      },
+    );
+    const data = await response.json();
+    const edges = data?.data?.collectionByHandle?.products?.edges || [];
+    collectionProducts = edges.map(({ node }) => ({
+      id: node.id,
+      title: node.title,
+      imageUrl: node.featuredImage?.url || null,
+      variantId: node.variants?.edges?.[0]?.node?.id || null,
+      price: node.variants?.edges?.[0]?.node?.price || null,
+    }));
+  } catch {
+    collectionProducts = [];
+  }
+
   return {
     package: packageData,
     tourInfo,
@@ -156,13 +255,55 @@ export async function loader({ params, request }) {
     selectedIncludeIds,
     tourItinerary,
     shopifyProduct,
+    countries,
+    cities,
+    productAddons,
+    collectionProducts,
+    packageTypeOptions,
+    travellerOptions,
+    tourTypeOptions,
     shop: session.shop,
   };
 }
 
 export async function action({ request, params }) {
+  const { session } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("intent");
+
+  if (intent === "add-country") {
+    const country = await addPackageCountry(params.id, session.shop, {
+      name: formData.get("name"),
+      display_order: 1,
+    });
+    return { saved: true, savedAt: Date.now(), country };
+  }
+
+  if (intent === "delete-country") {
+    await deletePackageCountry(
+      params.id,
+      Number(formData.get("country_id")),
+      session.shop,
+    );
+    return { saved: true, savedAt: Date.now() };
+  }
+
+  if (intent === "add-city") {
+    const city = await addPackageCity(params.id, session.shop, {
+      name: formData.get("name"),
+      display_order: 1,
+    });
+    return { saved: true, savedAt: Date.now(), city };
+  }
+
+  if (intent === "delete-city") {
+    await deletePackageCity(
+      params.id,
+      Number(formData.get("city_id")),
+      session.shop,
+    );
+    return { saved: true, savedAt: Date.now() };
+  }
 
   if (intent === "upload-itinerary-pdf") {
     const file = formData.get("file");
@@ -172,10 +313,32 @@ export async function action({ request, params }) {
     const updated = await uploadItineraryPdf(params.id, file);
     return { saved: true, savedAt: Date.now(), tourItinerary: updated };
   }
- if (intent === "delete-itinerary-pdf") {
-  const updated = await deleteItineraryPdf(params.id);
-  return { saved: true, savedAt: Date.now(), tourItinerary: updated };
-}
+
+  if (intent === "delete-itinerary-pdf") {
+    const updated = await deleteItineraryPdf(params.id);
+    return { saved: true, savedAt: Date.now(), tourItinerary: updated };
+  }
+
+  if (intent === "add-product-addon") {
+    const payload = {
+      shopify_product_id: formData.get("shopify_product_id"),
+      shopify_variant_id: formData.get("shopify_variant_id") || null,
+      product_title: formData.get("product_title"),
+      price: formData.get("price") ? Number(formData.get("price")) : null,
+      image_url: formData.get("image_url") || null,
+    };
+    const productAddons = await createProductAddon(params.id, payload).then(() =>
+      getProductAddons(params.id),
+    );
+    return { saved: true, savedAt: Date.now(), productAddons };
+  }
+
+  if (intent === "delete-product-addon") {
+    await deleteProductAddon(Number(formData.get("addon_id")));
+    const productAddons = await getProductAddons(params.id);
+    return { saved: true, savedAt: Date.now(), productAddons };
+  }
+
   if (intent === "save-pricing") {
     const { pricing, payment } = JSON.parse(formData.get("pricing_json"));
     const addons = JSON.parse(formData.get("addons_json"));
@@ -272,6 +435,8 @@ export async function action({ request, params }) {
     region: formData.get("region"),
     short_description: formData.get("short_description"),
     tour_type_tags: formData.getAll("tour_type_tags"),
+    package_type_tags: formData.getAll("package_type_tags"),
+    traveller_types: formData.getAll("traveller_types"),
     featured: formData.get("featured") === "on",
   };
 
@@ -309,6 +474,13 @@ export default function EditPackage() {
     selectedIncludeIds,
     tourItinerary,
     shopifyProduct,
+    countries,
+    cities,
+    productAddons,
+    collectionProducts,
+    packageTypeOptions,
+    travellerOptions,
+    tourTypeOptions,
     shop,
   } = useLoaderData();
 
@@ -319,10 +491,12 @@ export default function EditPackage() {
   const datesFetcher = useFetcher();
   const capacityFetcher = useFetcher();
   const pricingFetcher = useFetcher();
+  const locationsFetcher = useFetcher();
   const addonsFetcher = useFetcher();
   const publishFetcher = useFetcher();
   const includesFetcher = useFetcher();
   const itineraryFetcher = useFetcher();
+  const productAddonFetcher = useFetcher();
 
   const [activeTab, setActiveTab] = useState("tour-info");
   const [showToast, setShowToast] = useState(false);
@@ -461,6 +635,14 @@ export default function EditPackage() {
     }
   }, [itineraryFetcher.data]);
 
+  useEffect(() => {
+    if (productAddonFetcher.data?.saved) {
+      setShowToast(true);
+      const timer = setTimeout(() => setShowToast(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [productAddonFetcher.data]);
+
   // Handler functions
   function handleSaveCapacity() {
     capacityFetcher.submit(
@@ -504,12 +686,34 @@ export default function EditPackage() {
       encType: "multipart/form-data",
     });
   }
+
   function handleDeleteItinerary() {
-  itineraryFetcher.submit(
-    { intent: "delete-itinerary-pdf" },
-    { method: "post" },
-  );
-}
+    itineraryFetcher.submit(
+      { intent: "delete-itinerary-pdf" },
+      { method: "post" },
+    );
+  }
+
+  function handleAddProductAddon(product) {
+    productAddonFetcher.submit(
+      {
+        intent: "add-product-addon",
+        shopify_product_id: product.id,
+        shopify_variant_id: product.variantId || "",
+        product_title: product.title,
+        price: product.price || "",
+        image_url: product.imageUrl || "",
+      },
+      { method: "post" },
+    );
+  }
+
+  function handleRemoveProductAddon(addonId) {
+    productAddonFetcher.submit(
+      { intent: "delete-product-addon", addon_id: addonId },
+      { method: "post" },
+    );
+  }
 
   function handleTogglePublish() {
     const nextStatus = pkg.status === "Published" ? "Draft" : "Published";
@@ -750,7 +954,16 @@ export default function EditPackage() {
 
       {activeTab === "tour-info" && (
         <Form method="post" id="tour-info-form">
-          <TourInformation data={tourInfo} pkg={pkg} />
+          <TourInformation
+            data={tourInfo}
+            pkg={pkg}
+            countries={countries}
+            cities={cities}
+            locationsFetcher={locationsFetcher}
+            packageTypeOptions={packageTypeOptions}
+            travellerOptions={travellerOptions}
+            tourTypeOptions={tourTypeOptions}
+          />
         </Form>
       )}
 
@@ -789,14 +1002,19 @@ export default function EditPackage() {
         />
       )}
 
-     {activeTab === "itinerary" && (
-  <ItineraryTab
-    data={itineraryFetcher.data?.tourItinerary || tourItinerary}
-    onChange={setItineraryFile}
-    onDelete={handleDeleteItinerary}
-    isDeleting={itineraryFetcher.state !== "idle"}
-  />
-)}
+      {activeTab === "itinerary" && (
+        <ItineraryTab
+          data={itineraryFetcher.data?.tourItinerary || tourItinerary}
+          onChange={setItineraryFile}
+          onDelete={handleDeleteItinerary}
+          isDeleting={itineraryFetcher.state !== "idle"}
+          collectionProducts={collectionProducts}
+          addons={productAddonFetcher.data?.productAddons || productAddons}
+          onAddAddon={handleAddProductAddon}
+          onRemoveAddon={handleRemoveProductAddon}
+          isAddonBusy={productAddonFetcher.state !== "idle"}
+        />
+      )}
 
       {activeTab !== "tour-info" &&
         activeTab !== "dates" &&
