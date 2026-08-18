@@ -53,11 +53,41 @@ import Sidebar from "../components/layout/Sidebar";
 import TourInformation from "../components/layout/package/TourInformation";
 import DatesTab from "../components/layout/package/DatesTab";
 import CapacityEligibility from "../components/layout/package/CapacityEligibility";
+import PackageTravellerOptions from "../components/layout/package/PackageTravellerOptions";
 import PricingTab from "../components/layout/package/PricingTab";
 import GuestAddonsTable from "../components/layout/package/GuestAddonsTable";
 import IncludesTab from "../components/layout/package/IncludesTab";
 import ItineraryTab from "../components/layout/package/ItineraryTab";
 import Toast from "../components/layout/ui/Toast";
+
+// Package type & traveller options (Travel Package tab) and Tour type tags
+// (Includes tab) both live on the same tour_info record as the fields the
+// Tour info tab edits. Since the FastAPI PUT fully overwrites tour_info,
+// every save from any of these three tabs must send the COMPLETE record —
+// this fetches what's currently saved and layers just the caller's fields
+// on top, so saving one tab never wipes what another tab owns.
+async function mergeAndSaveTourInfo(packageId, overrides) {
+  const current = await getTourInfo(packageId);
+
+  await saveTourInfo(packageId, {
+    tour_title: current.tour_title || "",
+    duration_label: current.duration_label || "",
+    departure_city: current.departure_city || "",
+    start_city: current.start_city || "",
+    end_city: current.end_city || "",
+    days: current.days ?? null,
+    nights: current.nights ?? null,
+    country: current.country || "",
+    region: current.region || "",
+    category: current.category || "",
+    short_description: current.short_description || "",
+    tour_type_tags: current.tour_type_tags || [],
+    package_type_tags: current.package_type_tags || [],
+    traveller_types: current.traveller_types || [],
+    featured: current.featured || false,
+    ...overrides,
+  });
+}
 
 export async function loader({ params, request }) {
   const { session, admin } = await authenticate.admin(request);
@@ -341,7 +371,6 @@ export async function action({ request, params }) {
 
   if (intent === "save-pricing") {
     const { pricing, payment } = JSON.parse(formData.get("pricing_json"));
-    const addons = JSON.parse(formData.get("addons_json"));
 
     await saveTourPricing(params.id, pricing);
     await saveTourPayment(params.id, payment);
@@ -352,6 +381,43 @@ export async function action({ request, params }) {
       payment_status: payment.payment_status,
     });
 
+    return { saved: true, savedAt: Date.now() };
+  }
+
+  if (intent === "save-includes") {
+    const { selected_option_ids, tour_type_tags, ...includesData } =
+      JSON.parse(formData.get("includes_json"));
+
+    await saveTourIncludes(params.id, includesData);
+    await savePackageIncludeSelections(params.id, selected_option_ids || []);
+    await mergeAndSaveTourInfo(params.id, {
+      tour_type_tags: tour_type_tags || [],
+    });
+
+    return { saved: true, savedAt: Date.now() };
+  }
+
+  if (intent === "save-travel-package") {
+    const { package_type_tags, traveller_types } = JSON.parse(
+      formData.get("travel_package_json"),
+    );
+    const capacityData = JSON.parse(formData.get("capacity_json"));
+    const addons = JSON.parse(formData.get("addons_json"));
+
+    await mergeAndSaveTourInfo(params.id, {
+      package_type_tags: package_type_tags || [],
+      traveller_types: traveller_types || [],
+    });
+
+    const sanitizedCapacity = {
+      ...capacityData,
+      maximum_age:
+        capacityData.maximum_age === "" || capacityData.maximum_age === null
+          ? null
+          : Number(capacityData.maximum_age),
+    };
+    await saveTourCapacity(params.id, sanitizedCapacity);
+
     for (const addon of addons) {
       const { id, _localId, ...data } = addon;
       if (id) {
@@ -361,32 +427,6 @@ export async function action({ request, params }) {
       }
     }
 
-    return { saved: true, savedAt: Date.now() };
-  }
-
-  if (intent === "save-includes") {
-    const { selected_option_ids, ...includesData } = JSON.parse(
-      formData.get("includes_json"),
-    );
-
-    await saveTourIncludes(params.id, includesData);
-    await savePackageIncludeSelections(params.id, selected_option_ids || []);
-
-    return { saved: true, savedAt: Date.now() };
-  }
-
-  if (intent === "save-capacity") {
-    const capacityData = JSON.parse(formData.get("capacity_json"));
-
-    const sanitized = {
-      ...capacityData,
-      maximum_age:
-        capacityData.maximum_age === "" || capacityData.maximum_age === null
-          ? null
-          : Number(capacityData.maximum_age),
-    };
-
-    await saveTourCapacity(params.id, sanitized);
     return { saved: true, savedAt: Date.now() };
   }
 
@@ -422,8 +462,9 @@ export async function action({ request, params }) {
     return { saved: true, savedAt: Date.now() };
   }
 
-  // Default: Tour info save
-  const payload = {
+  // Default: Tour info save (Tour identity + Countries & cities only —
+  // tag fields are owned by other tabs now, so we preserve them via merge).
+  await mergeAndSaveTourInfo(params.id, {
     tour_title: formData.get("tour_title"),
     duration_label: formData.get("duration_label"),
     departure_city: formData.get("departure_city"),
@@ -434,19 +475,14 @@ export async function action({ request, params }) {
     country: formData.get("country"),
     region: formData.get("region"),
     short_description: formData.get("short_description"),
-    tour_type_tags: formData.getAll("tour_type_tags"),
-    package_type_tags: formData.getAll("package_type_tags"),
-    traveller_types: formData.getAll("traveller_types"),
     featured: formData.get("featured") === "on",
-  };
-
-  await saveTourInfo(params.id, payload);
+  });
 
   // Keep packages.title/destination/region in sync so they're correct everywhere else displayed
   await updatePackage(params.id, {
-    title: payload.tour_title || undefined,
-    destination: payload.country || undefined,
-    region: payload.region || undefined,
+    title: formData.get("tour_title") || undefined,
+    destination: formData.get("country") || undefined,
+    region: formData.get("region") || undefined,
   });
 
   return { saved: true, savedAt: Date.now() };
@@ -454,6 +490,7 @@ export async function action({ request, params }) {
 
 const TABS = [
   { key: "tour-info", label: "Tour info" },
+  { key: "travel-package", label: "Travel Package" },
   { key: "dates", label: "Dates" },
   { key: "pricing", label: "Pricing" },
   { key: "includes", label: "Includes" },
@@ -489,7 +526,7 @@ export default function EditPackage() {
 
   // All fetchers declared together, before anything references them
   const datesFetcher = useFetcher();
-  const capacityFetcher = useFetcher();
+  const travelPackageFetcher = useFetcher();
   const pricingFetcher = useFetcher();
   const locationsFetcher = useFetcher();
   const addonsFetcher = useFetcher();
@@ -521,6 +558,12 @@ export default function EditPackage() {
     extra_nights_price: tourCapacity.extra_nights_price ?? 0,
     private_rooms_type: tourCapacity.private_rooms_type || "",
     private_rooms_price: tourCapacity.private_rooms_price ?? 0,
+  }));
+
+  // Package type & traveller options — moved here from the Tour info tab.
+  const [travelPackageForm, setTravelPackageForm] = useState(() => ({
+    package_type_tags: tourInfo.package_type_tags || [],
+    traveller_types: tourInfo.traveller_types || [],
   }));
 
   const [pricingForm, setPricingForm] = useState(() => ({
@@ -559,6 +602,7 @@ export default function EditPackage() {
     secondary_label: tourIncludes.secondary_label || "",
     enquiry_email_or_url: tourIncludes.enquiry_email_or_url || "",
     show_selection_summary: tourIncludes.show_selection_summary ?? false,
+    tour_type_tags: tourInfo.tour_type_tags || [],
   }));
 
   // Just the staged File object — nothing to prefill, there's no text to edit
@@ -587,12 +631,12 @@ export default function EditPackage() {
   }, [datesFetcher.data]);
 
   useEffect(() => {
-    if (capacityFetcher.data?.saved) {
+    if (travelPackageFetcher.data?.saved) {
       setShowToast(true);
       const timer = setTimeout(() => setShowToast(false), 3000);
       return () => clearTimeout(timer);
     }
-  }, [capacityFetcher.data]);
+  }, [travelPackageFetcher.data]);
 
   useEffect(() => {
     if (pricingFetcher.data?.saved) {
@@ -644,9 +688,14 @@ export default function EditPackage() {
   }, [productAddonFetcher.data]);
 
   // Handler functions
-  function handleSaveCapacity() {
-    capacityFetcher.submit(
-      { intent: "save-capacity", capacity_json: JSON.stringify(capacityForm) },
+  function handleSaveTravelPackage() {
+    travelPackageFetcher.submit(
+      {
+        intent: "save-travel-package",
+        travel_package_json: JSON.stringify(travelPackageForm),
+        capacity_json: JSON.stringify(capacityForm),
+        addons_json: JSON.stringify(addonsForm),
+      },
       { method: "post" },
     );
   }
@@ -663,7 +712,6 @@ export default function EditPackage() {
       {
         intent: "save-pricing",
         pricing_json: JSON.stringify(pricingForm),
-        addons_json: JSON.stringify(addonsForm),
       },
       { method: "post" },
     );
@@ -790,18 +838,18 @@ export default function EditPackage() {
               </button>
             )}
 
-            {activeTab === "dates" && (
+            {activeTab === "travel-package" && (
               <button
                 type="button"
-                onClick={handleSaveCapacity}
-                disabled={capacityFetcher.state !== "idle"}
+                onClick={handleSaveTravelPackage}
+                disabled={travelPackageFetcher.state !== "idle"}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-60"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
                   <path d="M9 12l2 2 4-4" />
                   <circle cx="12" cy="12" r="9" />
                 </svg>
-                {capacityFetcher.state !== "idle" ? "Saving…" : "Save changes"}
+                {travelPackageFetcher.state !== "idle" ? "Saving…" : "Save changes"}
               </button>
             )}
 
@@ -960,32 +1008,19 @@ export default function EditPackage() {
             countries={countries}
             cities={cities}
             locationsFetcher={locationsFetcher}
-            packageTypeOptions={packageTypeOptions}
-            travellerOptions={travellerOptions}
-            tourTypeOptions={tourTypeOptions}
           />
         </Form>
       )}
 
-      {activeTab === "dates" && (
+      {activeTab === "travel-package" && (
         <>
-          <DatesTab
-            dates={tourDates}
-            packageBasePrice={pkg.base_price}
-            fetcher={datesFetcher}
+          <PackageTravellerOptions
+            data={tourInfo}
+            packageTypeOptions={packageTypeOptions}
+            travellerOptions={travellerOptions}
+            onChange={setTravelPackageForm}
           />
           <CapacityEligibility data={tourCapacity} onChange={setCapacityForm} />
-        </>
-      )}
-
-      {activeTab === "pricing" && (
-        <>
-          <PricingTab
-            pricing={tourPricing}
-            payment={tourPayment}
-            packageBasePrice={pkg.base_price}
-            onChange={setPricingForm}
-          />
           <GuestAddonsTable
             addons={addonsForm}
             onChange={setAddonsForm}
@@ -994,10 +1029,32 @@ export default function EditPackage() {
         </>
       )}
 
+      {activeTab === "dates" && (
+        <DatesTab
+          dates={tourDates}
+          packageBasePrice={pkg.base_price}
+          fetcher={datesFetcher}
+        />
+      )}
+
+      {activeTab === "pricing" && (
+        <PricingTab
+          pricing={tourPricing}
+          payment={tourPayment}
+          packageBasePrice={pkg.base_price}
+          onChange={setPricingForm}
+        />
+      )}
+
       {activeTab === "includes" && (
         <IncludesTab
-          data={{ ...tourIncludes, selected_option_ids: selectedIncludeIds }}
+          data={{
+            ...tourIncludes,
+            selected_option_ids: selectedIncludeIds,
+            tour_type_tags: tourInfo.tour_type_tags || [],
+          }}
           initialOptions={includeOptions}
+          tourTypeOptions={tourTypeOptions}
           onChange={setIncludesForm}
         />
       )}
@@ -1017,6 +1074,7 @@ export default function EditPackage() {
       )}
 
       {activeTab !== "tour-info" &&
+        activeTab !== "travel-package" &&
         activeTab !== "dates" &&
         activeTab !== "pricing" &&
         activeTab !== "includes" &&

@@ -5,6 +5,7 @@ from ..database import get_db
 from ..models import Package, TourInfo
 from ..schemas import TourInfoCreate
 from ..dependencies import check_internal_key
+from ..crud import sync_package_addons
 
 router = APIRouter(
     prefix="/tour-info",
@@ -107,6 +108,8 @@ def save_tour_info(
 
     db.commit()
     db.refresh(info)
+
+    sync_package_addons(db, package_id)
 
     return {
         "message": "Tour information saved successfully",

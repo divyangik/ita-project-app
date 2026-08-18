@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { FieldError, inputClass } from "../shared/formValidation";
-import GuestCategoryInlineManager from "./GuestCategoryInlineManager";
 
 const SHORT_DESCRIPTION_MAX = 500;
 
@@ -79,18 +78,8 @@ export default function TourInformation({
   countries = [],
   cities = [],
   locationsFetcher,
-  packageTypeOptions = [],
-  travellerOptions = [],
-  tourTypeOptions = [],
 }) {  
   const [form, setForm] = useState(() => buildInitialForm(data, pkg));
-  const [selectedTags, setSelectedTags] = useState(data?.tour_type_tags || []);
-  const [selectedPackageTypes, setSelectedPackageTypes] = useState(
-    data?.package_type_tags || [],
-  );
-  const [selectedTravellerTypes, setSelectedTravellerTypes] = useState(
-    data?.traveller_types || [],
-  );
   const [touched, setTouched] = useState({});
   const [newCountry, setNewCountry] = useState("");
   const [newCity, setNewCity] = useState("");
@@ -119,24 +108,6 @@ export default function TourInformation({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-  }
-
-  function toggleTag(tag) {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
-  }
-
-  function togglePackageType(type) {
-    setSelectedPackageTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
-    );
-  }
-
-  function toggleTravellerType(type) {
-    setSelectedTravellerTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
-    );
   }
 
   function handleAddCountry() {
@@ -497,177 +468,6 @@ export default function TourInformation({
               </p>
             )}
           </div>
-        </div>
-      </div>
-
-     {/* Package type & traveller options */}
-      <div className="overflow-hidden rounded-xl border border-indigo-100 bg-white">
-        <SectionHeader
-          icon={
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-4 w-4"
-            >
-              <circle cx="9" cy="8" r="3" />
-              <path d="M2 20c0-3 3-5 7-5s7 2 7 5" />
-              <path d="M16 7a3 3 0 010 6" />
-              <path d="M22 20c0-2.5-2-4-4-4.5" />
-            </svg>
-          }
-          title="Package type & traveller options"
-          subtitle="Which guest categories this tour is offered for"
-        />
-
-        <div className="divide-y divide-indigo-100 p-6">
-          <div className="pb-5">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Package type
-            </p>
-            <div className="flex flex-wrap gap-4">
-              {packageTypeOptions.map((type) => {
-                const checked = selectedPackageTypes.includes(type.value);
-                return (
-                  <label
-                    key={type.value}
-                    className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => togglePackageType(type.value)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    {type.name}
-                  </label>
-                );
-              })}
-              {packageTypeOptions.length === 0 && (
-                <p className="text-xs text-gray-400">
-                  No package type options yet — use "Add / edit" below.
-                </p>
-              )}
-            </div>
-            <GuestCategoryInlineManager
-              kind="package_type"
-              options={packageTypeOptions}
-            />
-          </div>
-
-          <div className="pt-5">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Traveller
-            </p>
-            <div className="flex flex-wrap gap-4">
-              {travellerOptions.map((type) => {
-                const checked = selectedTravellerTypes.includes(type.value);
-                return (
-                  <label
-                    key={type.value}
-                    className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleTravellerType(type.value)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    {type.name}
-                  </label>
-                );
-              })}
-              {travellerOptions.length === 0 && (
-                <p className="text-xs text-gray-400">
-                  No traveller options yet — use "Add / edit" below.
-                </p>
-              )}
-            </div>
-            <GuestCategoryInlineManager
-              kind="traveller"
-              options={travellerOptions}
-            />
-          </div>
-        </div>
-
-        {selectedPackageTypes.map((type) => (
-          <input
-            key={type}
-            type="hidden"
-            name="package_type_tags"
-            value={type}
-          />
-        ))}
-        {selectedTravellerTypes.map((type) => (
-          <input
-            key={type}
-            type="hidden"
-            name="traveller_types"
-            value={type}
-          />
-        ))}
-      </div>
-
-      {/* Tour type tags */}
-      <div className="overflow-hidden rounded-xl border border-indigo-100 bg-white">
-        <SectionHeader
-          icon={
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-4 w-4"
-            >
-              <path d="M20.6 12.6L12.6 20.6a2 2 0 01-2.8 0l-8-8V4h8.6l8 8a2 2 0 010 2.8z" />
-              <circle cx="7.5" cy="7.5" r="1" />
-            </svg>
-          }
-          title="Tour type tags"
-          subtitle="Click to toggle — active tags appear on the product page"
-        />
-
-        <div className="p-6">
-          <div className="flex flex-wrap gap-3">
-            {tourTypeOptions.map((tag) => {
-              const active = selectedTags.includes(tag.value);
-
-              return (
-                <button
-                  key={tag.value}
-                  type="button"
-                  onClick={() => toggleTag(tag.value)}
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                    active
-                      ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
-                      : "border-gray-300 bg-white text-gray-700 hover:border-indigo-300 hover:bg-indigo-50"
-                  }`}
-                >
-                  {tag.name}
-                </button>
-              );
-            })}
-          </div>
-
-          {tourTypeOptions.length === 0 && (
-            <p className="mt-3 text-xs text-gray-400">
-              No tour type options yet — use "Add / edit" below.
-            </p>
-          )}
-
-          {tourTypeOptions.length > 0 && selectedTags.length === 0 && (
-            <p className="mt-3 text-xs text-gray-400">
-              No tags selected — the product page's filter chips won't match
-              this tour.
-            </p>
-          )}
-
-          <GuestCategoryInlineManager kind="tour_type" options={tourTypeOptions} />
-
-          {selectedTags.map((tag) => (
-            <input key={tag} type="hidden" name="tour_type_tags" value={tag} />
-          ))}
         </div>
       </div>
 

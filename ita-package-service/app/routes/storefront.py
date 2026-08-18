@@ -45,7 +45,13 @@ def get_storefront_package(shopify_product_id: str, db: Session = Depends(get_db
     if not package:
         return {"view": None}
  
-    tour_info = db.query(TourInfo).filter(TourInfo.package_id == package.id).first()
+    tour_info = (
+    db.query(TourInfo)
+    .filter(TourInfo.package_id == package.id)
+    .order_by(TourInfo.id.desc())
+    .first()
+    )
+    
     tour_dates = (
         db.query(TourDate)
         .filter(TourDate.package_id == package.id, TourDate.status != "Cancelled")

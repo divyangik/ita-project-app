@@ -5,6 +5,7 @@ from ..database import get_db
 from ..models import Package, TourCapacity
 from ..schemas import TourCapacityCreate
 from ..dependencies import check_internal_key
+from ..crud import sync_package_addons
 
 router = APIRouter(
     prefix="/tour-capacity",
@@ -72,5 +73,7 @@ def save_tour_capacity(
 
     db.commit()
     db.refresh(capacity)
+
+    sync_package_addons(db, package_id)
 
     return capacity

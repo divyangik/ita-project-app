@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { CheckCircle2, Pencil, Plus, Trash2, X } from "lucide-react";
+import GuestCategoryInlineManager from "./GuestCategoryInlineManager";
 
 function defaultForm(data = {}, selectedIds = []) {
   return {
@@ -15,6 +16,9 @@ function defaultForm(data = {}, selectedIds = []) {
     secondary_label: data.secondary_label ?? "",
     enquiry_email_or_url: data.enquiry_email_or_url ?? "",
     show_selection_summary: data.show_selection_summary ?? false,
+
+    // Moved here from the Tour info tab.
+    tour_type_tags: data.tour_type_tags || [],
   };
 }
 
@@ -28,7 +32,12 @@ function IconPreview({ svg, className = "h-5 w-5" }) {
   );
 }
 
-export default function IncludesTab({ data, initialOptions = [], onChange }) {
+export default function IncludesTab({
+  data,
+  initialOptions = [],
+  tourTypeOptions = [],
+  onChange,
+}) {
   const initialSelected = data.selected_option_ids || [];
 
   const [form, setForm] = useState(() => defaultForm(data, initialSelected));
@@ -36,6 +45,9 @@ export default function IncludesTab({ data, initialOptions = [], onChange }) {
     () => new Set(initialSelected),
   );
   const [options, setOptions] = useState(initialOptions);
+  const [selectedTags, setSelectedTags] = useState(
+    () => data.tour_type_tags || [],
+  );
 
   const [managerOpen, setManagerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -61,6 +73,16 @@ export default function IncludesTab({ data, initialOptions = [], onChange }) {
       if (next.has(id)) next.delete(id);
       else next.add(id);
       update({ selected_option_ids: Array.from(next) });
+      return next;
+    });
+  }
+
+  function toggleTag(tag) {
+    setSelectedTags((prev) => {
+      const next = prev.includes(tag)
+        ? prev.filter((t) => t !== tag)
+        : [...prev, tag];
+      update({ tour_type_tags: next });
       return next;
     });
   }
@@ -323,6 +345,60 @@ export default function IncludesTab({ data, initialOptions = [], onChange }) {
             </div>
           )}
         </div>
+      </section>
+
+      {/* Tour type tags — moved here from the Tour info tab */}
+      <section className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="mb-4 flex items-start gap-2">
+          <CheckCircle2
+            className="mt-0.5 h-4 w-4 text-blue-600"
+            strokeWidth={1.75}
+          />
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">
+              Tour type tags
+            </h3>
+            <p className="text-xs text-gray-500">
+              Click to toggle — active tags appear on the product page.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {tourTypeOptions.map((tag) => {
+            const active = selectedTags.includes(tag.value);
+
+            return (
+              <button
+                key={tag.value}
+                type="button"
+                onClick={() => toggleTag(tag.value)}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                  active
+                    ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                    : "border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                }`}
+              >
+                {tag.name}
+              </button>
+            );
+          })}
+        </div>
+
+        {tourTypeOptions.length === 0 && (
+          <p className="mt-3 text-xs text-gray-400">
+            No tour type options yet — use "Add / edit" below.
+          </p>
+        )}
+
+        {tourTypeOptions.length > 0 && selectedTags.length === 0 && (
+          <p className="mt-3 text-xs text-gray-400">
+            No tags selected — the product page's filter chips won't match
+            this tour.
+          </p>
+        )}
+
+        <GuestCategoryInlineManager kind="tour_type" options={tourTypeOptions} />
       </section>
     </div>
   );

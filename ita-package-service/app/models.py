@@ -13,6 +13,7 @@ from sqlalchemy import (
     Numeric,
     Boolean,
     ForeignKey,
+    JSON,
     text,
 )
 from sqlalchemy.dialects.mysql import LONGTEXT
@@ -71,6 +72,18 @@ class Package(Base):
     shopify_product_id = Column(String(100), nullable=True)
     shopify_variant_id = Column(String(100), nullable=True)
     shopify_collection_id = Column(String(100), nullable=True)
+
+    shopify_product_id = Column(String(100), nullable=True)
+    shopify_variant_id = Column(String(100), nullable=True)
+    shopify_collection_id = Column(String(100), nullable=True)
+
+    # DERIVED / READ-ONLY summary of what's selected for this package,
+    # combining tour_info.package_type_tags, tour_info.traveller_types,
+    # tour_capacity's eligibility flags, and visible tour_guest_addons.
+    # Rebuilt by crud.sync_package_addons() after each of those saves —
+    # never write to this column directly.
+    addons = Column(JSON, nullable=True)
+    
     # One Package -> One TourInfo
     tour_info = relationship(
         "TourInfo",

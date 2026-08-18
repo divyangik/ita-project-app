@@ -34,6 +34,12 @@ class PackageResponse(PackageCreate):
     package_code: str
     shop_domain: str
 
+    # Derived summary of Package type / Traveller type / Capacity &
+    # eligibility / Guest add-ons that are actually selected for this
+    # package. Rebuilt automatically by crud.sync_package_addons() —
+    # read-only from here, don't send this back on PATCH.
+    addons: dict | None = None
+
     class Config:
         from_attributes = True
 

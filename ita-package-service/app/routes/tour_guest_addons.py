@@ -5,6 +5,7 @@ from ..database import get_db
 from ..dependencies import check_internal_key
 from ..models import Package, TourGuestAddon
 from ..schemas import TourGuestAddonCreate
+from ..crud import sync_package_addons
 
 router = APIRouter(
     prefix="/tour-addons",
@@ -47,6 +48,8 @@ def create_addon(
     db.commit()
     db.refresh(addon)
 
+    sync_package_addons(db, package_id)
+
     return addon
 
 
@@ -72,6 +75,8 @@ def update_addon(
     db.commit()
     db.refresh(addon)
 
+    sync_package_addons(db, addon.package_id)
+
     return addon
 
 
@@ -90,7 +95,11 @@ def delete_addon(
     if not addon:
         raise HTTPException(404, "Addon not found")
 
+    package_id = addon.package_id
+
     db.delete(addon)
     db.commit()
+
+    sync_package_addons(db, package_id)
 
     return {"message": "Addon deleted"}
