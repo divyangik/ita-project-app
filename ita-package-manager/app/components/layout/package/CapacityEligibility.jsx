@@ -219,13 +219,25 @@ export default function CapacityEligibility({ data = {}, onChange }) {
                     <label className="mb-1 block text-xs font-medium text-gray-500">
                       {group.priceLabel || "Price"}
                     </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      {...numberFieldProps(group.priceField, 0)}
-                      className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${accent.ring}`}
-                    />
+                    {group.priceIsText ? (
+                      <input
+                        type="text"
+                        placeholder="0"
+                        value={form[group.priceField]}
+                        onChange={(e) =>
+                          update({ [group.priceField]: e.target.value })
+                        }
+                        className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${accent.ring}`}
+                      />
+                    ) : (
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        {...numberFieldProps(group.priceField, 0)}
+                        className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${accent.ring}`}
+                      />
+                    )}
                   </div>
 
                   {hasCount && (
