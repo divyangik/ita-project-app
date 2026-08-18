@@ -34,9 +34,25 @@ function buildInitial(data = {}) {
 }
 
 // Each add-on group gets its own accent so the tiles are easy to tell apart
-// at a glance — three colors used across four groups (extra nights + private
-// rooms share the blue family the header already uses).
+// at a glance. Custom package type is included here now too, so it gets
+// the same Type + Price layout/behavior as the others instead of being two
+// separate plain boxes above the grid — it just has no Count column since
+// there's no backend field for it.
 const GROUPS = [
+  {
+    key: "custom_package",
+    title: "Custom package type",
+    accent: "slate",
+    typeField: "custom_package_type",
+    priceField: "custom_package_message",
+    priceLabel: "Custom price",
+    hasCount: false,
+    // Unlike the other groups' price fields (real Integer columns),
+    // custom_package_message is stored as free-form Text on the backend —
+    // Pydantic rejects a JS number there with a 422 ("Input should be a
+    // valid string"). Keep it as a string all the way through.
+    priceIsText: true,
+  },
   {
     key: "extra_nights",
     title: "Extra nights",
@@ -72,6 +88,13 @@ const GROUPS = [
 ];
 
 const ACCENTS = {
+  slate: {
+    bg: "bg-slate-50/60",
+    border: "border-slate-200",
+    dot: "bg-slate-500",
+    text: "text-slate-700",
+    ring: "focus:border-slate-500 focus:ring-slate-100",
+  },
   blue: {
     bg: "bg-blue-50/60",
     border: "border-blue-100",
@@ -111,6 +134,25 @@ export default function CapacityEligibility({ data = {}, onChange }) {
     update({ [name]: Math.max(min, current + delta) });
   }
 
+  // Fixes the "stuck at 0, can't backspace" bug: previously every
+  // keystroke ran `Number(e.target.value) || 0`, so clearing the field to
+  // type a new value snapped it straight back to "0" before you could type
+  // anything else. Now an in-progress empty field is allowed to actually
+  // be empty; it only falls back to the default once you leave the field
+  // (onBlur) or if you never type anything at all.
+  function numberFieldProps(field, fallback) {
+    return {
+      value: form[field],
+      onChange: (e) => {
+        const raw = e.target.value;
+        update({ [field]: raw === "" ? "" : Number(raw) });
+      },
+      onBlur: (e) => {
+        if (e.target.value === "") update({ [field]: fallback });
+      },
+    };
+  }
+
   return (
     <div className="mt-5 rounded-xl border border-gray-200 bg-white">
       <div className="flex items-start gap-3 border-b border-gray-200 bg-gray-50 px-6 py-5">
@@ -138,36 +180,13 @@ export default function CapacityEligibility({ data = {}, onChange }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 divide-y divide-gray-200 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-        <div className="p-6">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Custom package type
-          </label>
-          <input
-            type="text"
-            value={form.custom_package_type}
-            onChange={(e) => update({ custom_package_type: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-
-        <div className="p-6">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Custom Price for package type
-          </label>
-          <input
-            type="number"
-            value={form.custom_package_message}
-            onChange={(e) => update({ custom_package_message: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      {/* Add-on tiles: extra nights / private rooms / couple room / child room */}
+      {/* Add-on tiles: custom package type / extra nights / private rooms /
+          couple room / child room — same Type + Price (+ Count) layout for
+          all of them. */}
       <div className="grid grid-cols-1 gap-4 border-t border-gray-200 p-6 sm:grid-cols-2">
         {GROUPS.map((group) => {
           const accent = ACCENTS[group.accent];
+          const hasCount = group.hasCount !== false;
 
           return (
             <div
@@ -195,53 +214,50 @@ export default function CapacityEligibility({ data = {}, onChange }) {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className={hasCount ? "grid grid-cols-2 gap-3" : ""}>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-500">
-                      Price
+                      {group.priceLabel || "Price"}
                     </label>
                     <input
                       type="number"
                       min="0"
-                      value={form[group.priceField]}
-                      onChange={(e) =>
-                        update({ [group.priceField]: Number(e.target.value) || 0 })
-                      }
+                      placeholder="0"
+                      {...numberFieldProps(group.priceField, 0)}
                       className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${accent.ring}`}
                     />
                   </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-500">
-                      Count
-                    </label>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => stepper(group.countField, -1, 1)}
-                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
-                      >
-                        −
-                      </button>
-                      <input
-                        type="number"
-                        value={form[group.countField]}
-                        onChange={(e) =>
-                          update({
-                            [group.countField]: Number(e.target.value) || 1,
-                          })
-                        }
-                        className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-sm font-medium"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => stepper(group.countField, 1, 1)}
-                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
-                      >
-                        +
-                      </button>
+                  {hasCount && (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-500">
+                        Count
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => stepper(group.countField, -1, 1)}
+                          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="1"
+                          {...numberFieldProps(group.countField, 1)}
+                          className="w-full min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-2 text-center text-sm font-medium"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => stepper(group.countField, 1, 1)}
+                          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

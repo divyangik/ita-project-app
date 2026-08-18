@@ -421,7 +421,23 @@ export async function action({ request, params }) {
     for (const addon of addons) {
       const { id, _localId, ...data } = addon;
       if (id) {
-        await updateGuestAddon(id, data);
+        // This loop re-syncs every addon on every Capacity/Travel-package
+        // save, even ones the user didn't touch. That races against the
+        // standalone delete-addon fetcher (fired immediately when the
+        // trash icon is clicked): if a delete lands first, this update
+        // hits an addon that's already gone and the backend correctly
+        // 404s. Treat that as "already deleted, nothing to do" rather
+        // than aborting the whole save — the row is gone either way,
+        // which is the outcome the user wanted.
+        try {
+          await updateGuestAddon(id, data);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (!message.includes("404")) throw err;
+          console.warn(
+            `Skipped updating addon ${id}: already deleted (likely raced with a delete request).`,
+          );
+        }
       } else {
         await createGuestAddon(params.id, data);
       }

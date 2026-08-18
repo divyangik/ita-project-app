@@ -49,6 +49,21 @@ export default function IncludesTab({
     () => data.tour_type_tags || [],
   );
 
+  // `data.tour_type_tags` is only initialized into state once (above), so
+  // it never re-syncs on its own. If a tour type option's *value* is
+  // renamed while this page is open, the loader revalidates and
+  // `data.tour_type_tags` picks up the correctly-migrated value from the
+  // backend cascade — but `selectedTags` stays stale, showing the tag as
+  // "unselected". Re-selecting it then stacks the new value on top of the
+  // stale one, and the next save overwrites the correct DB value with
+  // that stale, duplicated array. Re-sync whenever the underlying data
+  // actually changes (stringified so an inline `|| []` array literal on
+  // every parent render doesn't spuriously refire this).
+  useEffect(() => {
+    setSelectedTags(data.tour_type_tags || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(data.tour_type_tags || [])]);
+
   const [managerOpen, setManagerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [nameInput, setNameInput] = useState("");

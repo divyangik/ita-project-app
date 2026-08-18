@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GuestCategoryInlineManager from "./GuestCategoryInlineManager";
 
 function SectionHeader({ icon, title, subtitle }) {
@@ -31,6 +31,21 @@ export default function PackageTravellerOptions({
   const [selectedTravellerTypes, setSelectedTravellerTypes] = useState(
     () => data.traveller_types || [],
   );
+
+  // Same staleness issue as IncludesTab's tour_type_tags: these are only
+  // seeded into state once, so renaming a package-type/traveller option's
+  // *value* elsewhere leaves this local state stale after the loader
+  // revalidates, and the next save re-clobbers the correctly-migrated DB
+  // value. Re-sync whenever the underlying data actually changes.
+  useEffect(() => {
+    setSelectedPackageTypes(data.package_type_tags || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(data.package_type_tags || [])]);
+
+  useEffect(() => {
+    setSelectedTravellerTypes(data.traveller_types || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(data.traveller_types || [])]);
 
   function emit(packageTypes, travellerTypes) {
     onChange?.({

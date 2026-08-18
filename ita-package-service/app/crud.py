@@ -61,6 +61,11 @@ def sync_package_addons(db: Session, package_id: int) -> dict:
             if info and info.traveller_types
             else []
         ),
+        "tour_type": (
+            info.tour_type_tags.split(",")
+            if info and info.tour_type_tags
+            else []
+        ),
         "eligibility": (
             [
                 field

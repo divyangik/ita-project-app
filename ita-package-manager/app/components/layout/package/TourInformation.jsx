@@ -187,21 +187,6 @@ export default function TourInformation({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Duration label
-              </label>
-              <input
-                name="duration_label"
-                value={form.duration_label}
-                readOnly
-                placeholder="e.g. 7 Days, 1 Country, 1 City"
-                className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-0"
-              />
-              <p className="mt-1 text-xs text-gray-400">
-                Set when the package's duration is created
-              </p>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Departure city
               </label>
               <input
@@ -245,32 +230,6 @@ export default function TourInformation({
                 className={inputClass(touched.end_city && errors.end_city)}
               />
               {touched.end_city && <FieldError message={errors.end_city} />}
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Days / Nights
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  name="days"
-                  value={form.days}
-                  readOnly
-                  placeholder="Days"
-                  className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-0"
-                />
-                <input
-                  type="text"
-                  name="nights"
-                  value={form.nights}
-                  readOnly
-                  placeholder="Nights"
-                  className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 placeholder-gray-400 focus:outline-none focus:ring-0"
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-400">
-                Auto-filled from duration
-              </p>
             </div>
           </div>
 
