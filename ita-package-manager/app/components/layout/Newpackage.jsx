@@ -9,13 +9,6 @@ const REGION_OPTIONS = [
   "Caribbean",
 ];
 
-const PAYMENT_STATUS_OPTIONS = [
-  { value: "Unpaid", label: "Unpaid" },
-  { value: "Deposit paid", label: "Deposit paid" },
-  { value: "Partial payment", label: "Partial payment" },
-  { value: "Fully paid", label: "Fully paid" },
-];
-
 // The backend still requires a `duration` string even though we no longer
 // collect Days/Nights from the user. We send this fixed placeholder so the
 // API contract is satisfied without reintroducing the Days/Nights UI.
@@ -93,7 +86,6 @@ export default function NewPackage({ open, onClose, fetcher }) {
 
   const [title, setTitle] = useState("");
   const [basePrice, setBasePrice] = useState("");
-  const [paymentStatus, setPaymentStatus] = useState("Unpaid");
   const [status, setStatus] = useState("Draft");
 
   const [errors, setErrors] = useState({});
@@ -126,7 +118,6 @@ export default function NewPackage({ open, onClose, fetcher }) {
       setProductDropdownOpen(false);
       setTitle("");
       setBasePrice("");
-      setPaymentStatus("Unpaid");
       setStatus("Draft");
       setErrors({});
       setSubmitAttempted(false);
@@ -298,10 +289,6 @@ export default function NewPackage({ open, onClose, fetcher }) {
       nextErrors.base_price = "Base price must be a positive number.";
     }
 
-    if (!paymentStatus) {
-      nextErrors.payment_status = "Select a payment status.";
-    }
-
     if (!status) {
       nextErrors.status = "Select an initial status.";
     }
@@ -334,7 +321,6 @@ export default function NewPackage({ open, onClose, fetcher }) {
     selectedProductId,
     title,
     basePrice,
-    paymentStatus,
     status,
   ]);
 
@@ -685,50 +671,24 @@ export default function NewPackage({ open, onClose, fetcher }) {
               <FieldError message={errors.title} />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-800">
-                  Base price (USD) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-400">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    name="base_price"
-                    readOnly
-                    value={basePrice}
-                    placeholder="0"
-                    className={`${inputBase} ${inputReadOnly} pl-6`}
-                  />
-                </div>
-                <FieldError message={errors.base_price} />
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-800">
+                Base price (USD) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-400">
+                  $
+                </span>
+                <input
+                  type="number"
+                  name="base_price"
+                  readOnly
+                  value={basePrice}
+                  placeholder="0"
+                  className={`${inputBase} ${inputReadOnly} pl-6`}
+                />
               </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-800">
-                  Payment status
-                </label>
-                <select
-                  name="payment_status"
-                  value={paymentStatus}
-                  onChange={(e) => {
-                    setPaymentStatus(e.target.value);
-                    clearError("payment_status");
-                  }}
-                  className={`${inputBase} ${
-                    errors.payment_status ? inputError : inputNormal
-                  } bg-white`}
-                >
-                  {PAYMENT_STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <FieldError message={errors.payment_status} />
-              </div>
+              <FieldError message={errors.base_price} />
             </div>
 
             <div>

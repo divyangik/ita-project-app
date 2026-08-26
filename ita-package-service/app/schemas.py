@@ -8,7 +8,6 @@ class PackageCreate(BaseModel):
     destination: str
     region: str
     base_price: Decimal
-    payment_status: str
     duration: str
     status: str
     shopify_product_id: str | None = None
@@ -21,7 +20,6 @@ class PackageUpdate(BaseModel):
     destination: str | None = None
     region: str | None = None
     base_price: Decimal | None = None
-    payment_status: str | None = None
     duration: str | None = None
     status: str | None = None
     shopify_product_id: str | None = None
@@ -33,7 +31,7 @@ class PackageResponse(PackageCreate):
     id: int
     package_code: str
     shop_domain: str
-
+    
     # Derived summary of Package type / Traveller type / Capacity &
     # eligibility / Guest add-ons that are actually selected for this
     # package. Rebuilt automatically by crud.sync_package_addons() —
@@ -134,12 +132,26 @@ class TourDateCreate(TourDateBase):
     package_id: int
 
 
+class TourDateUpdate(BaseModel):
+    departure_date: date | None = None
+    return_date: date | None = None
+    seats_total: int | None = None
+    seats_available: int | None = None
+    adult_price: Decimal | None = None
+    child_price: Decimal | None = None
+    single_supplement: Decimal | None = None
+    status: str | None = None
+    notes: str | None = None
+
+
 class TourDateResponse(TourDateBase):
     id: int
     package_id: int
 
     class Config:
         from_attributes = True
+
+
 class TourCapacityBase(BaseModel):
     max_group_size: int | None = None
     min_group_size: int | None = None
@@ -217,7 +229,7 @@ class TourPricingResponse(TourPricingBase):
 # ==========================
 
 class TourPaymentBase(BaseModel):
-    payment_status: str = "Unpaid"
+   
     amount_received: Decimal = 0
     deposit_amount: Decimal = 0
     number_of_installments: int = 1
@@ -308,6 +320,7 @@ class GuestCategoryOptionBase(BaseModel):
     kind: str  # "package_type" | "traveller" | "tour_type"
     name: str
     value: str
+    message: str | None = None
     display_order: int = 0
 
 
@@ -318,6 +331,7 @@ class GuestCategoryOptionCreate(GuestCategoryOptionBase):
 class GuestCategoryOptionUpdate(BaseModel):
     name: str | None = None
     value: str | None = None
+    message: str | None = None
     display_order: int | None = None
 
 

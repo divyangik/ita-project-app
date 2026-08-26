@@ -1,5 +1,4 @@
-import { useMemo, useState } from "react";
-
+import { useEffect, useMemo, useState } from "react";
 function formatDateLabel(isoDate) {
   if (!isoDate) return "";
   const [year, month, day] = isoDate.split("-");
@@ -51,7 +50,46 @@ export default function DatesTab({ dates = [], packageBasePrice, fetcher }) {
   const [newEndDate, setNewEndDate] = useState("");
   const [newMessage, setNewMessage] = useState("");
 
+  // Draft notes text per existing date, keyed by date id — lets each card be
+  // edited independently and only sent to the server when its own Save is clicked.
+  const [noteDrafts, setNoteDrafts] = useState(() =>
+    Object.fromEntries(dates.map((d) => [d.id, d.notes || ""])),
+  );
+  const [savingDateId, setSavingDateId] = useState(null);
+
+  // Keep drafts in sync when dates are added/removed, without clobbering
+  // text the user is actively editing in an existing card.
+  useEffect(() => {
+    setNoteDrafts((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      const currentIds = new Set(dates.map((d) => d.id));
+
+      dates.forEach((d) => {
+        if (!(d.id in next)) {
+          next[d.id] = d.notes || "";
+          changed = true;
+        }
+      });
+      Object.keys(next).forEach((id) => {
+        if (!currentIds.has(Number(id))) {
+          delete next[id];
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [dates]);
+
   const adding = fetcher.state !== "idle";
+
+  // Clear the per-card "Saving…" state once the fetcher round-trips back to idle.
+  useEffect(() => {
+    if (fetcher.state === "idle") {
+      setSavingDateId(null);
+    }
+  }, [fetcher.state]);
   const min = useMemo(() => todayIso(), []);
   const errors = useMemo(
     () => validateDates(newStartDate, newEndDate),
@@ -99,6 +137,18 @@ export default function DatesTab({ dates = [], packageBasePrice, fetcher }) {
   function handleRemove(dateId) {
     fetcher.submit(
       { intent: "delete-date", date_id: dateId },
+      { method: "post" },
+    );
+  }
+
+  function handleSaveNote(dateId) {
+    setSavingDateId(dateId);
+    fetcher.submit(
+      {
+        intent: "update-date",
+        date_id: dateId,
+        notes: noteDrafts[dateId] ?? "",
+      },
       { method: "post" },
     );
   }
@@ -210,17 +260,7 @@ export default function DatesTab({ dates = [], packageBasePrice, fetcher }) {
           </button>
         </div>
 
-        <div className="mt-4">
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-            Message for custom date
-          </label>
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
+       
 
         <div className="mt-5">
           <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -230,59 +270,91 @@ export default function DatesTab({ dates = [], packageBasePrice, fetcher }) {
           {dates.length === 0 ? (
             <p className="text-sm text-gray-400">No dates added yet.</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {dates.map((d) => (
-                <span
-                  key={d.id}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium ${
-                    d.is_default
-                      ? "border-blue-300 bg-blue-50 text-blue-900"
-                      : "border-gray-300 bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="h-3.5 w-3.5"
-                  >
-                    <rect x="3" y="4" width="18" height="16" rx="2" />
-                    <path d="M3 9h18M8 3v4M16 3v4" />
-                  </svg>
-                  {formatDateLabel(d.departure_date)}
-                  {" – "}
-                  {formatDateLabel(d.return_date)}
-                  <button
-                    type="button"
-                    onClick={() => handleSetDefault(d.id)}
-                    title="Set as default"
-                    className={
+            <div className="space-y-2">
+              {dates.map((d) => {
+                const draft = noteDrafts[d.id] ?? "";
+                const dirty = draft !== (d.notes || "");
+
+                return (
+                  <div
+                    key={d.id}
+                    className={`rounded-lg border p-3 ${
                       d.is_default
-                        ? "opacity-100"
-                        : "opacity-40 hover:opacity-70"
-                    }
+                        ? "border-blue-300 bg-blue-50"
+                        : "border-gray-200 bg-gray-50"
+                    }`}
                   >
-                    ★
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(d.id)}
-                    aria-label="Remove date"
-                    className="opacity-50 hover:opacity-100"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="h-3 w-3"
-                    >
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                </span>
-              ))}
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-gray-800">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="h-3.5 w-3.5 shrink-0"
+                      >
+                        <rect x="3" y="4" width="18" height="16" rx="2" />
+                        <path d="M3 9h18M8 3v4M16 3v4" />
+                      </svg>
+                      <span>
+                        {formatDateLabel(d.departure_date)}
+                        {" – "}
+                        {formatDateLabel(d.return_date)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleSetDefault(d.id)}
+                        title="Set as default"
+                        className={
+                          d.is_default
+                            ? "opacity-100"
+                            : "opacity-40 hover:opacity-70"
+                        }
+                      >
+                        ★
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(d.id)}
+                        aria-label="Remove date"
+                        className="ml-auto opacity-50 hover:opacity-100"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          className="h-3.5 w-3.5"
+                        >
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={draft}
+                        placeholder="Message for this date (optional)"
+                        onChange={(e) =>
+                          setNoteDrafts((prev) => ({
+                            ...prev,
+                            [d.id]: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveNote(d.id)}
+                        disabled={!dirty || savingDateId === d.id}
+                        className="shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {savingDateId === d.id ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

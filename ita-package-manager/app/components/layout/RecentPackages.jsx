@@ -1,23 +1,12 @@
 import { useNavigate } from "react-router";
-import {
-  normalizeStatus,
-  normalizePayment,
-  STATUS_CONFIG,
-  PAYMENT_CONFIG,
-} from "./PackagesTable";
+import { normalizeStatus, STATUS_CONFIG } from "./PackagesTable";
 
 function PackageRow({ pkg, onDelete }) {
   const navigate = useNavigate();
 
   const price = Number(pkg.price ?? pkg.base_price ?? 0);
-  const paymentKey = normalizePayment(pkg.payment_status);
   const statusKey = normalizeStatus(pkg.status);
-
-  const payment = PAYMENT_CONFIG[paymentKey];
   const status = STATUS_CONFIG[statusKey];
-
-  const totalAmount = price;
-  const amountPaid = Math.round((payment.pct / 100) * price);
 
   return (
     <tr className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
@@ -34,31 +23,6 @@ function PackageRow({ pkg, onDelete }) {
           ${price.toLocaleString()}
         </div>
         <div className="text-xs text-gray-500">per person</div>
-      </td>
-
-      <td className="px-5 py-4">
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${payment.badge}`}
-        >
-          {payment.icon}
-          {payment.label}
-        </span>
-
-        <div className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-gray-100">
-          <div
-            className={`h-full rounded-full ${payment.bar}`}
-            style={{
-              width: `${Math.max(
-                payment.pct,
-                payment.pct > 0 ? payment.pct : 2,
-              )}%`,
-            }}
-          />
-        </div>
-
-        <div className="mt-1 text-xs text-gray-400">
-          ${amountPaid.toLocaleString()} of ${totalAmount.toLocaleString()}
-        </div>
       </td>
 
       <td className="px-5 py-4">
@@ -138,7 +102,6 @@ export default function RecentPackages({ packages = [], onDelete }) {
             <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <th className="px-5 py-3">Package</th>
               <th className="px-5 py-3">Price</th>
-              <th className="px-5 py-3">Payment status</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3"></th>
             </tr>
@@ -148,7 +111,7 @@ export default function RecentPackages({ packages = [], onDelete }) {
             {packages.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={4}
                   className="px-5 py-8 text-center text-sm text-gray-400"
                 >
                   No packages yet.

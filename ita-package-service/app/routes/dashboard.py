@@ -61,8 +61,8 @@ def dashboard(
                 "destination": p.destination,
                 "region": p.region,
                 "price": float(p.base_price),
-                "payment_status": p.payment_status,
                 "status": p.status,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
             }
             for p in packages[:10]
         ],

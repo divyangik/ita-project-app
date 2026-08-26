@@ -171,8 +171,22 @@ export async function createTourDate(data) {
   return response.json();
 }
 
-export async function setDefaultTourDate(dateId) {
-  const response = await fetch(`${BASE_URL}/tour-dates/${dateId}/set-default`, {
+export async function updateTourDate(dateId, data) {
+  const response = await fetch(`${BASE_URL}/tour-dates/${dateId}`, {
+    method: "PATCH",
+    headers: jsonHeaders,
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+}
+
+export async function setDefaultTourDate(dateId)
+ {  const response = await fetch(`${BASE_URL}/tour-dates/${dateId}/set-default`, {
     method: "PATCH",
     headers,
   });

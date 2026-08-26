@@ -5,7 +5,7 @@ export default function Header({ shop, onNewPackage }) {
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
 
         <p className="text-sm text-gray-500">
-          Overview of all tour packages and payment status
+          Overview of all tour packages
         </p>
       </div>
 

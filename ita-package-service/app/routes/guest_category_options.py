@@ -107,12 +107,12 @@ def create_guest_category_option(
         )
         .count()
     )
-
     option = GuestCategoryOption(
         shop_domain=shop,
         kind=data.kind,
         name=data.name,
         value=data.value,
+        message=data.message,
         display_order=data.display_order or next_order,
     )
 

@@ -43,7 +43,6 @@ export async function action({ request }) {
     destination: formData.get("destination"),
     region: formData.get("region"),
     base_price: Number(formData.get("base_price")),
-    payment_status: formData.get("payment_status"),
     duration: formData.get("duration"),
     status: formData.get("status"),
     shopify_product_id: normalizeGid(formData.get("shopify_product_id")),

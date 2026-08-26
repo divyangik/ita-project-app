@@ -27,6 +27,31 @@ from .routes.tour_product_addons import router as tour_product_addons_router
 # Create all database tables
 Base.metadata.create_all(bind=engine)
 
+# --- Lightweight column migration -----------------------------------------
+# `create_all` only creates missing tables, it never alters existing ones.
+# guest_category_options already exists in production, so the new
+# `message` column has to be added by hand here. Safe to run on every
+# startup: the ALTER is skipped once the column exists.
+def _ensure_guest_category_options_message_column():
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(engine)
+    if "guest_category_options" not in inspector.get_table_names():
+        return
+
+    existing_columns = {
+        col["name"] for col in inspector.get_columns("guest_category_options")
+    }
+    if "message" in existing_columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text("ALTER TABLE guest_category_options ADD COLUMN message VARCHAR(255)")
+        )
+
+
+_ensure_guest_category_options_message_column()
 app = FastAPI(
     title="ITA Package Service",
     version="1.0.0",

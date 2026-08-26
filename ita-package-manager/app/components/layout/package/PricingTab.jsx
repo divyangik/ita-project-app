@@ -2,12 +2,6 @@ import { useState } from "react";
 import Toggle from "../ui/Toggle";
 import { FieldError, inputClass } from "../shared/formValidation";
 
-const PAYMENT_STATUS_OPTIONS = [
-  "Unpaid",
-  "Deposit paid",
-  "Partial payment",
-  "Fully paid",
-];
 const CURRENCY_OPTIONS = [
   { value: "USD", label: "USD — $" },
   { value: "EUR", label: "EUR — €" },
@@ -25,7 +19,6 @@ function buildPricingInitial(data = {}, packageBasePrice) {
 
 function buildPaymentInitial(data = {}) {
   return {
-    payment_status: data.payment_status || "Unpaid",
     amount_received: data.amount_received ?? 0,
     deposit_amount: data.deposit_amount ?? 0,
     number_of_installments: data.number_of_installments ?? 1,
@@ -171,23 +164,7 @@ export default function PricingTab({
             )}
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Currency
-            </label>
-            <select
-              name="currency"
-              value={pricingForm.currency}
-              onChange={handlePricingField}
-              className={inputClass(false, "green")}
-            >
-              {CURRENCY_OPTIONS.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
+         
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -208,7 +185,7 @@ export default function PricingTab({
         </div>
       </div>
 
-      {/* Payment status & options — blue accent */}
+      {/* Payment options — blue accent */}
       <div className="overflow-hidden rounded-xl border border-blue-100 bg-white">
         <div className="flex items-start gap-3 border-b border-blue-100 bg-gradient-to-r from-blue-50/80 to-white px-6 py-5">
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
@@ -225,54 +202,17 @@ export default function PricingTab({
           </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-900">
-              Payment status & options
+              Payment options
             </h3>
             <p className="text-xs text-gray-500">
-              Track payment and configure deposit / full payment settings
+              Configure deposit / full payment settings
             </p>
           </div>
         </div>
 
         <div className="p-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Payment status
-              </label>
-              <select
-                name="payment_status"
-                value={paymentForm.payment_status}
-                onChange={handlePaymentField}
-                className={inputClass(false, "blue")}
-              >
-                {PAYMENT_STATUS_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-gray-400">
-                Shown on the dashboard and package list
-              </p>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Amount received ($)
-              </label>
-              <input
-                type="number"
-                name="amount_received"
-                min="0"
-                step="0.01"
-                value={paymentForm.amount_received}
-                onChange={handlePaymentField}
-                className={inputClass(false, "blue")}
-              />
-              <p className="mt-1 text-xs text-gray-400">
-                Total amount collected so far
-              </p>
-            </div>
+          <div className="grid grid-cols-1 gap-4">
+           
           </div>
 
           <div className="mt-5 grid grid-cols-1 gap-4 border-t border-gray-100 pt-5 sm:grid-cols-2">

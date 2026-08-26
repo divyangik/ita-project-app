@@ -16,6 +16,7 @@ import {
   saveTourInfo,
   getTourDates,
   createTourDate,
+  updateTourDate,
   setDefaultTourDate,
   deleteTourDate,
   getTourCapacity,
@@ -89,153 +90,39 @@ async function mergeAndSaveTourInfo(packageId, overrides) {
   });
 }
 
-export async function loader({ params, request }) {
-  const { session, admin } = await authenticate.admin(request);
+// Products available for the "Product Addon" dropdown — always pulled from
+// the dedicated T-shirt collection, NOT the package's own linked travel
+// collection. Set TSHIRT_COLLECTION_HANDLE in your env if the handle in
+// your store differs from the default "t-shirts".
+const TSHIRT_COLLECTION_HANDLE =
+  process.env.TSHIRT_COLLECTION_HANDLE || "t-shirts";
 
-  const packageData = await getPackage({ id: params.id, shop: session.shop });
-  const tourInfo = await getTourInfo(packageData.id);
-  const tourDates = await getTourDates(packageData.id);
-
-  let tourIncludes = {};
+async function fetchShopifyProduct(admin, shopifyProductId) {
+  if (!shopifyProductId) return null;
   try {
-    tourIncludes = (await getTourIncludes(packageData.id)) || {};
+    const response = await admin.graphql(
+      `#graphql
+      query GetProduct($id: ID!) {
+        product(id: $id) {
+          id
+          title
+          status
+          description
+          onlineStoreUrl
+          featuredImage { url altText }
+          variants(first: 1) { edges { node { id price } } }
+        }
+      }`,
+      { variables: { id: `gid://shopify/Product/${shopifyProductId}` } },
+    );
+    const data = await response.json();
+    return data.data.product;
   } catch {
-    tourIncludes = {};
+    return null;
   }
+}
 
-  let includeOptions = [];
-  try {
-    includeOptions = (await getIncludeOptions(session.shop)) || [];
-  } catch {
-    includeOptions = [];
-  }
-
-  let selectedIncludeIds = [];
-  try {
-    const selection = await getPackageIncludeSelections(packageData.id);
-    selectedIncludeIds = selection?.option_ids || [];
-  } catch {
-    selectedIncludeIds = [];
-  }
-
-  let packageTypeOptions = [];
-  try {
-    packageTypeOptions =
-      (await getGuestCategoryOptions(session.shop, "package_type")) || [];
-  } catch {
-    packageTypeOptions = [];
-  }
-
-  let travellerOptions = [];
-  try {
-    travellerOptions =
-      (await getGuestCategoryOptions(session.shop, "traveller")) || [];
-  } catch {
-    travellerOptions = [];
-  }
-
-  let tourTypeOptions = [];
-  try {
-    tourTypeOptions =
-      (await getGuestCategoryOptions(session.shop, "tour_type")) || [];
-  } catch {
-    tourTypeOptions = [];
-  }
-
-  let tourCapacity = {};
-  try {
-    tourCapacity = (await getTourCapacity(packageData.id)) || {};
-  } catch {
-    tourCapacity = {};
-  }
-
-  let tourPricing = {};
-  try {
-    tourPricing = (await getTourPricing(packageData.id)) || {};
-  } catch {
-    tourPricing = {};
-  }
-
-  let tourPayment = {};
-  try {
-    tourPayment = (await getTourPayment(packageData.id)) || {};
-  } catch {
-    tourPayment = {};
-  }
-
-  let guestAddons = [];
-  try {
-    guestAddons = (await getGuestAddons(packageData.id)) || [];
-  } catch {
-    guestAddons = [];
-  }
-
-  let tourItinerary = {};
-  try {
-    tourItinerary = (await getTourItinerary(packageData.id)) || {};
-  } catch {
-    tourItinerary = {};
-  }
-
-  let productAddons = [];
-  try {
-    productAddons = (await getProductAddons(packageData.id)) || [];
-  } catch {
-    productAddons = [];
-  }
-
-  let countries = [];
-  try {
-    countries = (await getPackageCountries(packageData.id, session.shop)) || [];
-  } catch {
-    countries = [];
-  }
-
-  let cities = [];
-  try {
-    cities = (await getPackageCities(packageData.id, session.shop)) || [];
-  } catch {
-    cities = [];
-  }
-
-  // If this package is linked to a Shopify product, pull live details
-  let shopifyProduct = null;
-  if (packageData.shopify_product_id) {
-    try {
-      const response = await admin.graphql(
-        `#graphql
-        query GetProduct($id: ID!) {
-          product(id: $id) {
-            id
-            title
-            status
-            description
-            onlineStoreUrl
-            featuredImage { url altText }
-            variants(first: 1) { edges { node { id price } } }
-          }
-        }`,
-        {
-          variables: {
-            id: `gid://shopify/Product/${packageData.shopify_product_id}`,
-          },
-        },
-      );
-      const data = await response.json();
-      shopifyProduct = data.data.product;
-    } catch {
-      shopifyProduct = null;
-    }
-  }
-
-  // Products available for the "Product Addon" dropdown — always pulled from
-  // the dedicated T-shirt collection, NOT the package's own linked travel
-  // collection. Set TSHIRT_COLLECTION_HANDLE in your env if the handle in
-  // your store differs from the default "t-shirts".
-  const TSHIRT_COLLECTION_HANDLE =
-    process.env.TSHIRT_COLLECTION_HANDLE || "t-shirts";
-
-  let collectionProducts = [];
+async function fetchCollectionProducts(admin) {
   try {
     const response = await admin.graphql(
       `#graphql
@@ -253,15 +140,11 @@ export async function loader({ params, request }) {
           }
         }
       }`,
-      {
-        variables: {
-          handle: TSHIRT_COLLECTION_HANDLE,
-        },
-      },
+      { variables: { handle: TSHIRT_COLLECTION_HANDLE } },
     );
     const data = await response.json();
     const edges = data?.data?.collectionByHandle?.products?.edges || [];
-    collectionProducts = edges.map(({ node }) => ({
+    return edges.map(({ node }) => ({
       id: node.id,
       title: node.title,
       imageUrl: node.featuredImage?.url || null,
@@ -269,8 +152,82 @@ export async function loader({ params, request }) {
       price: node.variants?.edges?.[0]?.node?.price || null,
     }));
   } catch {
-    collectionProducts = [];
+    return [];
   }
+}
+
+export async function loader({ params, request }) {
+  const { session, admin } = await authenticate.admin(request);
+
+  // Only this one has to happen first — everything else below only needs
+  // packageData.id / packageData.shopify_product_id or session.shop, so it
+  // all fires at once instead of waiting in a line (this used to be ~18
+  // sequential awaits, which is why the page felt slow to load).
+  const packageData = await getPackage({ id: params.id, shop: session.shop });
+
+  const [
+    tourInfoResult,
+    tourDatesResult,
+    tourIncludesResult,
+    includeOptionsResult,
+    selectionResult,
+    packageTypeOptionsResult,
+    travellerOptionsResult,
+    tourTypeOptionsResult,
+    tourCapacityResult,
+    tourPricingResult,
+    tourPaymentResult,
+    guestAddonsResult,
+    tourItineraryResult,
+    productAddonsResult,
+    countriesResult,
+    citiesResult,
+    shopifyProductResult,
+    collectionProductsResult,
+  ] = await Promise.allSettled([
+    getTourInfo(packageData.id),
+    getTourDates(packageData.id),
+    getTourIncludes(packageData.id),
+    getIncludeOptions(session.shop),
+    getPackageIncludeSelections(packageData.id),
+    getGuestCategoryOptions(session.shop, "package_type"),
+    getGuestCategoryOptions(session.shop, "traveller"),
+    getGuestCategoryOptions(session.shop, "tour_type"),
+    getTourCapacity(packageData.id),
+    getTourPricing(packageData.id),
+    getTourPayment(packageData.id),
+    getGuestAddons(packageData.id),
+    getTourItinerary(packageData.id),
+    getProductAddons(packageData.id),
+    getPackageCountries(packageData.id, session.shop),
+    getPackageCities(packageData.id, session.shop),
+    fetchShopifyProduct(admin, packageData.shopify_product_id),
+    fetchCollectionProducts(admin),
+  ]);
+
+  // Same fallback behavior as before: a failed call just falls back to
+  // {} / [] / null instead of failing the whole page load.
+  const value = (result, fallback) =>
+    result.status === "fulfilled" ? result.value ?? fallback : fallback;
+
+  const tourInfo = value(tourInfoResult, {});
+  const tourDates = value(tourDatesResult, []);
+  const tourIncludes = value(tourIncludesResult, {});
+  const includeOptions = value(includeOptionsResult, []);
+  const selectedIncludeIds = value(selectionResult, {})?.option_ids || [];
+  const packageTypeOptions = value(packageTypeOptionsResult, []);
+  const travellerOptions = value(travellerOptionsResult, []);
+  const tourTypeOptions = value(tourTypeOptionsResult, []);
+  const tourCapacity = value(tourCapacityResult, {});
+  const tourPricing = value(tourPricingResult, {});
+  const tourPayment = value(tourPaymentResult, {});
+  const guestAddons = value(guestAddonsResult, []);
+  const tourItinerary = value(tourItineraryResult, {});
+  const productAddons = value(productAddonsResult, []);
+  const countries = value(countriesResult, []);
+  const cities = value(citiesResult, []);
+  const shopifyProduct = value(shopifyProductResult, null);
+  const collectionProducts = value(collectionProductsResult, []);
 
   return {
     package: packageData,
@@ -375,10 +332,9 @@ export async function action({ request, params }) {
     await saveTourPricing(params.id, pricing);
     await saveTourPayment(params.id, payment);
 
-    // Keep the packages table's price + payment_status in sync for dashboard display
+    // Keep the packages table's price in sync for dashboard display
     await updatePackage(params.id, {
       base_price: pricing.price_per_person || undefined,
-      payment_status: payment.payment_status,
     });
 
     return { saved: true, savedAt: Date.now() };
@@ -463,6 +419,13 @@ export async function action({ request, params }) {
       departure_date: formData.get("departure_date"),
       return_date: formData.get("return_date"),
       adult_price: Number(formData.get("adult_price")),
+      notes: formData.get("notes"),
+    });
+    return { saved: true, savedAt: Date.now() };
+  }
+
+  if (intent === "update-date") {
+    await updateTourDate(Number(formData.get("date_id")), {
       notes: formData.get("notes"),
     });
     return { saved: true, savedAt: Date.now() };
@@ -589,7 +552,6 @@ export default function EditPackage() {
       price_note: tourPricing.price_note || "",
     },
     payment: {
-      payment_status: tourPayment.payment_status || "Unpaid",
       amount_received: tourPayment.amount_received ?? 0,
       deposit_amount: tourPayment.deposit_amount ?? 0,
       balance_amount: tourPayment.balance_amount ?? 0,
@@ -985,15 +947,6 @@ export default function EditPackage() {
               <span className="font-semibold text-gray-900">
                 ${Number(pkg.base_price).toLocaleString()}
               </span>
-            </div>
-
-            <div className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2.5 text-sm shadow-sm backdrop-blur-sm">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-indigo-600">
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <path d="M2 10h20" />
-              </svg>
-              <span className="text-gray-500">Payment</span>
-              <span className="font-semibold text-gray-900">{pkg.payment_status}</span>
             </div>
           </div>
         </div>

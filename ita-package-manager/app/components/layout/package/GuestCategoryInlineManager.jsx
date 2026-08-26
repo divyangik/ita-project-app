@@ -5,10 +5,11 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 export default function GuestCategoryInlineManager({ kind, options }) {
   const [managerOpen, setManagerOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
   const [nameInput, setNameInput] = useState("");
   const [valueInput, setValueInput] = useState("");
+  const [messageInput, setMessageInput] = useState("");
   const [deletingId, setDeletingId] = useState(null);
-
   // Separate fetchers for save vs delete, same as IncludesTab, so a
   // delete in flight doesn't get confused with a save in flight.
   const crudFetcher = useFetcher();
@@ -17,10 +18,11 @@ export default function GuestCategoryInlineManager({ kind, options }) {
   const saving = crudFetcher.state !== "idle";
   const deleting = deleteFetcher.state !== "idle";
 
-  function openAddForm() {
+   function openAddForm() {
     setEditingId(null);
     setNameInput("");
     setValueInput("");
+    setMessageInput("");
     setManagerOpen(true);
   }
 
@@ -28,6 +30,7 @@ export default function GuestCategoryInlineManager({ kind, options }) {
     setEditingId(option.id);
     setNameInput(option.name);
     setValueInput(option.value);
+    setMessageInput(option.message || "");
     setManagerOpen(true);
   }
 
@@ -36,6 +39,7 @@ export default function GuestCategoryInlineManager({ kind, options }) {
     setEditingId(null);
     setNameInput("");
     setValueInput("");
+    setMessageInput("");
   }
 
   // IMPORTANT: this is a plain button + onClick, not a <form onSubmit>.
@@ -46,7 +50,7 @@ export default function GuestCategoryInlineManager({ kind, options }) {
   function handleSave() {
     if (!nameInput.trim() || !valueInput.trim()) return;
 
-    crudFetcher.submit(
+       crudFetcher.submit(
       {
         intent: editingId
           ? "update-guest-category-option"
@@ -55,6 +59,7 @@ export default function GuestCategoryInlineManager({ kind, options }) {
         kind,
         name: nameInput.trim(),
         value: valueInput.trim(),
+        message: messageInput.trim(),
       },
       { method: "post", action: "/app/api/guest-category-options" },
     );
@@ -142,8 +147,25 @@ export default function GuestCategoryInlineManager({ kind, options }) {
                 onChange={(e) => setValueInput(e.target.value)}
                 placeholder="e.g. couple"
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
-              />
+                          />
             </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+              Customer-facing note (optional)
+            </label>
+            <input
+              type="text"
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              placeholder="e.g. Counts as 2 guests — double the tour price"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+            />
+            <p className="mt-1 text-[11px] text-gray-400">
+              Shown under this option in the storefront's Guest &amp; Rooms
+              list. Leave blank to use the default text.
+            </p>
           </div>
 
           <div className="mt-4 flex items-center gap-2">
@@ -180,11 +202,16 @@ export default function GuestCategoryInlineManager({ kind, options }) {
                   key={option.id}
                   className="flex items-center justify-between py-2"
                 >
-                  <span className="text-sm text-gray-700">
+                                    <span className="text-sm text-gray-700">
                     {option.name}{" "}
                     <span className="text-xs text-gray-400">
                       ({option.value})
                     </span>
+                    {option.message && (
+                      <span className="block text-xs text-gray-400">
+                        Note: {option.message}
+                      </span>
+                    )}
                   </span>
                   <div className="flex items-center gap-1">
                     <button

@@ -45,6 +45,7 @@ def list_packages(
         db.query(Package)
         .options(joinedload(Package.tour_dates))
         .filter(Package.shop_domain == shop)
+        .order_by(Package.created_at.desc(), Package.id.desc())
         .all()
     )
     return packages
@@ -63,7 +64,6 @@ def create_package(
         destination=data.destination,
         region=data.region,
         base_price=data.base_price,
-        payment_status=data.payment_status,
         duration=data.duration,
         status=data.status,
         shopify_product_id=data.shopify_product_id,

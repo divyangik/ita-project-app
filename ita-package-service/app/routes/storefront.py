@@ -10,7 +10,7 @@ from ..models import (
     TourPricing, TourPaymentOption, TourIncludes, TourGuestAddon,
     TourCTAButtons, TourHeroImages, TourItinerary, TourProductAddon,
     PackageCountry, PackageCity, PackageIncludeSelection, IncludeOption,
-    Enquiry,
+    Enquiry, GuestCategoryOption,
 )
 from ..schemas import EnquiryCreate, EmailItineraryCreate
 from ..emailer import send_itinerary_email
@@ -114,11 +114,54 @@ def get_storefront_package(shopify_product_id: str, db: Session = Depends(get_db
             includes_dict["included"] = []
     else:
         includes_dict["included"] = []
- 
+
+    # Build value -> {name, message} lookups for the Package Type /
+    # Traveller options actually selected on this tour, scoped to the
+    # shop's option library. The widget uses `message` (when set by the
+    # merchant in the dashboard) instead of its built-in static note text.
+    def _guest_type_details(kind: str, selected_csv: str | None):
+        selected_values = (
+            [v.strip() for v in selected_csv.split(",") if v.strip()]
+            if selected_csv
+            else []
+        )
+        if not selected_values:
+            return []
+
+        options = (
+            db.query(GuestCategoryOption)
+            .filter(
+                GuestCategoryOption.shop_domain == package.shop_domain,
+                GuestCategoryOption.kind == kind,
+                GuestCategoryOption.value.in_(selected_values),
+            )
+            .all()
+        )
+        by_value = {o.value: o for o in options}
+
+        return [
+            {
+                "value": value,
+                "name": by_value[value].name if value in by_value else value,
+                "message": by_value[value].message if value in by_value else None,
+            }
+            for value in selected_values
+        ]
+
+    guest_type_details = {
+        "package_type": _guest_type_details(
+            "package_type", tour_info.package_type_tags if tour_info else None
+        ),
+        "traveller_type": _guest_type_details(
+            "traveller", tour_info.traveller_types if tour_info else None
+        ),
+    }
+
     return {
         "view": True,
         "package": _model_to_dict(package),
         "tour_info": _model_to_dict(tour_info),
+        "guest_type_details": guest_type_details,
         "capacity": _model_to_dict(tour_capacity),
         "pricing": _model_to_dict(tour_pricing),
         "payment": _model_to_dict(tour_payment),

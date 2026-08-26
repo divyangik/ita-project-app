@@ -36,17 +36,7 @@ class Package(Base):
 
     base_price = Column(DECIMAL(10, 2), nullable=False)
 
-    payment_status = Column(
-        Enum(
-            "Unpaid",
-            "Deposit paid",
-            "Partial payment",
-            "Fully paid",
-            name="payment_status_enum",
-        ),
-        default="Unpaid",
-    )
-
+   
     duration = Column(String(100), nullable=False)
 
     status = Column(
@@ -398,7 +388,6 @@ class TourPaymentOption(Base):
         nullable=False,
     )
 
-    payment_status = Column(String(50), default="Unpaid")
 
     amount_received = Column(Numeric(10, 2), default=0)
 
@@ -572,6 +561,7 @@ class GuestCategoryOption(Base):
     kind = Column(String(30), nullable=False)  # "package_type" | "traveller" | "tour_type"
     name = Column(String(100), nullable=False)
     value = Column(String(100), nullable=False)
+    message = Column(String(255), nullable=True)
 
     display_order = Column(Integer, default=0)
 

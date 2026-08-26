@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..dependencies import check_internal_key
 from ..models import TourDate
-from ..schemas import TourDateCreate, TourDateResponse
+from ..schemas import TourDateCreate, TourDateResponse, TourDateUpdate
 
 router = APIRouter(
     prefix="/tour-dates",
@@ -60,10 +60,32 @@ def create_tour_date(
     return tour_date
 
 
+@router.patch("/{date_id}", response_model=TourDateResponse)
+def update_tour_date(
+    date_id: int,
+    data: TourDateUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(check_internal_key),
+):
+    tour_date = db.query(TourDate).filter(TourDate.id == date_id).first()
+
+    if not tour_date:
+        raise HTTPException(status_code=404, detail="Tour date not found")
+
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(tour_date, field, value)
+
+    db.commit()
+    db.refresh(tour_date)
+
+    return tour_date
+
+
 @router.patch("/{date_id}/set-default", response_model=TourDateResponse)
 def set_default_date(
     date_id: int,
     db: Session = Depends(get_db),
+
     _: None = Depends(check_internal_key),
 ):
     tour_date = db.query(TourDate).filter(TourDate.id == date_id).first()

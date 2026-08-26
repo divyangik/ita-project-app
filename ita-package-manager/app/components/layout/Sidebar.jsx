@@ -9,24 +9,19 @@ export default function Sidebar({
   return (
     <div className="flex h-full flex-col bg-[#f6f6f7]">
       <div className="flex items-center gap-3 border-b border-gray-200 bg-[#f6f6f7] p-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-            className="h-5 w-5"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z" />
-          </svg>
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg">
+          <img
+            src="https://cdn.shopify.com/s/files/1/0691/9664/4648/files/Ita-logo_140x_2x_bd6587ea-a4ef-4e4f-b5f6-465480633c81.avif?v=1787579859"
+            alt="ITA Global"
+            className="h-12 w-12 object-contain"
+          />
         </div>
+
         <div>
           <h2 className="text-sm font-semibold text-gray-900">ITA Global</h2>
           <p className="text-xs text-gray-500">Tour Admin</p>
         </div>
       </div>
-
       <nav className="flex-1 overflow-y-auto bg-[#f6f6f7] p-4">
         <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
           Main
@@ -158,7 +153,6 @@ export default function Sidebar({
           </svg>
           New package
         </button>
-        
       </nav>
 
       <div className="border-t border-gray-200 bg-[#f6f6f7] p-5">
