@@ -23,3 +23,4 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 python-dotenv
+PyMySQL==1.2.0

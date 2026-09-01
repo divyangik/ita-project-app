@@ -9,3 +9,16 @@ ita-package-service/venv/
 ita-package-service/__pycache__/
 ita-package-service/.env
 ita-package-service/packages.db
+
+# Python cache
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Uploaded/generated files
+ita-package-service/app/uploads/
+
+# Certificates
+ita-package-service/certs/
+
