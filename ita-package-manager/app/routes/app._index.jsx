@@ -9,7 +9,7 @@ import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import DashboardCards from "../components/layout/DashboardCards";
 import RecentPackages from "../components/layout/RecentPackages";
-import NewPackage from "../components/layout/NewPackage";
+import NewPackage from "../components/layout/Newpackage";
 
 export async function loader({ request }) {
   const { session } = await authenticate.admin(request);
