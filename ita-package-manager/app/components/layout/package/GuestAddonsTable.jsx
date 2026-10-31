@@ -26,6 +26,7 @@ export default function GuestAddonsTable({ addons = [], onChange, onDelete }) {
         description: "",
         price: 0,
         visible: true,
+        max_quantity: 0,
         display_order: addons.length + 1,
       },
     ]);
@@ -88,6 +89,7 @@ export default function GuestAddonsTable({ addons = [], onChange, onDelete }) {
             <th className="px-6 py-3">Add-on name</th>
             <th className="px-6 py-3">Description</th>
             <th className="px-6 py-3">Price (+$)</th>
+            <th className="px-6 py-3">Max quantity</th>
             <th className="px-6 py-3">Visible</th>
             <th className="px-6 py-3"></th>
           </tr>
@@ -149,6 +151,24 @@ export default function GuestAddonsTable({ addons = [], onChange, onDelete }) {
                   {errors.price && <FieldError message={errors.price} />}
                 </td>
                 <td className="px-6 py-3">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={addon.max_quantity ?? 0}
+                    onChange={(e) =>
+                      updateRow(index, {
+                        max_quantity:
+                          e.target.value === ""
+                            ? 0
+                            : Math.max(0, Math.floor(Number(e.target.value))),
+                      })
+                    }
+                    className="w-20 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                  <p className="mt-1 text-[11px] text-gray-400">0 = no limit</p>
+                </td>
+                <td className="px-6 py-3">
                   <button
                     type="button"
                     onClick={() => updateRow(index, { visible: !addon.visible })}
@@ -189,7 +209,7 @@ export default function GuestAddonsTable({ addons = [], onChange, onDelete }) {
           {addons.length === 0 && (
             <tr>
               <td
-                colSpan={5}
+                colSpan={6}
                 className="px-6 py-8 text-center text-sm text-gray-400"
               >
                 No add-ons yet.

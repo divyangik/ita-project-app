@@ -106,7 +106,9 @@ export function computeBooking({ data, input, today }) {
     const found = (data.addons || []).find((x) => String(x.id) === String(a?.id));
     const qty = Number(a?.qty ?? 1);
     if (!found) throw new BookingError("An extra you chose is no longer available.");
-    if (!Number.isInteger(qty) || qty < 0 || qty > travelers) {
+    // The admin can set a maximum per extra (0 = no limit, up to the safety cap)
+    const maxQty = Number(found.max_qty) > 0 ? Number(found.max_qty) : MAX_QTY_PER_ROW;
+    if (!Number.isInteger(qty) || qty < 0 || qty > maxQty) {
       throw new BookingError("Extra quantity is not valid.");
     }
     if (qty === 0) continue;

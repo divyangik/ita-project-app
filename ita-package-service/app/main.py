@@ -52,6 +52,29 @@ def _ensure_guest_category_options_message_column():
 
 
 _ensure_guest_category_options_message_column()
+
+
+# Same idea for the add-on "max quantity" column (0 = no limit).
+def _ensure_guest_addons_max_quantity_column():
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(engine)
+    if "tour_guest_addons" not in inspector.get_table_names():
+        return
+
+    existing_columns = {
+        col["name"] for col in inspector.get_columns("tour_guest_addons")
+    }
+    if "max_quantity" in existing_columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text("ALTER TABLE tour_guest_addons ADD COLUMN max_quantity INTEGER DEFAULT 0")
+        )
+
+
+_ensure_guest_addons_max_quantity_column()
 app = FastAPI(
     title="ITA Package Service",
     version="1.0.0",

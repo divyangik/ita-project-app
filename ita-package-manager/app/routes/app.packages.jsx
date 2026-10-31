@@ -10,7 +10,7 @@ import {
 
 import DashboardLayout from "../components/layout/DashboardLayout";
 import Sidebar from "../components/layout/Sidebar";
-import NewPackage from "../components/layout/Newpackage";
+import NewPackage from "../components/layout/NewPackage";
 import PackagesTable, {
   normalizeStatus,
 } from "../components/layout/PackagesTable";

@@ -433,6 +433,9 @@ class TourGuestAddon(Base):
 
     display_order = Column(Integer, default=1)
 
+    # 0 = no limit. Otherwise the most a customer can add on the website.
+    max_quantity = Column(Integer, default=0)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     updated_at = Column(

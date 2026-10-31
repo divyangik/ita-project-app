@@ -210,6 +210,7 @@ def get_storefront_package(shopify_product_id: str, db: Session = Depends(get_db
                 "price": float(a.price),
                 "visible": a.visible,
                 "display_order": a.display_order,
+                "max_quantity": a.max_quantity or 0,
             }
             for a in guest_addons
         ],

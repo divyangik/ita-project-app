@@ -260,6 +260,7 @@ class TourGuestAddonBase(BaseModel):
     price: Decimal = 0
     visible: bool = True
     display_order: int = 1
+    max_quantity: int = 0
 
 
 class TourGuestAddonCreate(TourGuestAddonBase):
