@@ -5,6 +5,7 @@
 //        checkout -> creates a Shopify Draft Order and returns { checkout_url }
 // The browser never sets prices. Everything is recomputed here from the trip data.
 import { unauthenticated } from "../shopify.server";
+import { corsHeaders } from "../lib/cors.server";
 import {
   BookingError,
   buildDraftOrderInput,
@@ -13,22 +14,6 @@ import {
 } from "../lib/booking.server";
 
 const SERVICE = () => process.env.PYTHON_SERVICE_URL;
-
-function corsHeaders(request) {
-  const origin = request.headers.get("Origin") || "";
-  const allowed = (process.env.BOOKING_ALLOWED_ORIGINS || "http://localhost:8888")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const ok = allowed.includes("*") || allowed.includes(origin);
-  return {
-    "Access-Control-Allow-Origin": ok ? origin || "*" : allowed[0] || "",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Max-Age": "86400",
-    Vary: "Origin",
-  };
-}
 
 function json(request, body, status = 200) {
   return new Response(JSON.stringify(body), {

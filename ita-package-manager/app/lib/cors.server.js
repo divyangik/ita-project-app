@@ -2,13 +2,18 @@
 // Allowed websites come from BOOKING_ALLOWED_ORIGINS (comma separated).
 export function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
-  const allowed = (process.env.BOOKING_ALLOWED_ORIGINS || "http://localhost:8888")
+  const fromEnv = (process.env.BOOKING_ALLOWED_ORIGINS || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const ok = allowed.includes("*") || allowed.includes(origin);
+  const ok =
+    fromEnv.includes("*") ||
+    fromEnv.includes(origin) ||
+    // Your own computer (any port) and any Netlify preview/live site
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+    /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.netlify\.app$/.test(origin);
   return {
-    "Access-Control-Allow-Origin": ok ? origin || "*" : allowed[0] || "",
+    "Access-Control-Allow-Origin": ok ? origin : fromEnv[0] || "http://localhost:8888",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
