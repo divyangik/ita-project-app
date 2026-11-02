@@ -34,9 +34,15 @@ function cleanRows(rows) {
     if (!Number.isInteger(qty) || qty < 0 || qty > MAX_QTY_PER_ROW) {
       throw new BookingError("Traveler count is not valid.");
     }
-    if (qty > 0) merged.set(type, (merged.get(type) || 0) + qty);
+    // Optional name of the package type the traveler chose (for example "Senior")
+    const label = String(r?.label || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 60);
+    const key = `${type}|${label}`;
+    if (qty > 0) {
+      const found = merged.get(key);
+      merged.set(key, { type, label, qty: (found ? found.qty : 0) + qty });
+    }
   }
-  const out = [...merged].map(([type, qty]) => ({ type, qty }));
+  const out = [...merged.values()];
   if (out.length === 0) throw new BookingError("Choose at least one traveler.");
   return out;
 }
@@ -62,9 +68,7 @@ export function computeBooking({ data, input, today }) {
   const travelers = rows.reduce((n, r) => n + travelersInRow(r), 0);
 
   const cap = data.capacity || {};
-  if (cap.max_group_size > 0 && travelers > cap.max_group_size) {
-    throw new BookingError(`Maximum ${cap.max_group_size} travelers per booking.`);
-  }
+  // Group size is not capped here: customers can add as many travelers as they need.
   if (cap.min_group_size > 0 && travelers < cap.min_group_size) {
     throw new BookingError(`Minimum ${cap.min_group_size} travelers per booking.`);
   }
@@ -82,7 +86,8 @@ export function computeBooking({ data, input, today }) {
     );
   }
 
-  const adult = toCents(date.adult_price);
+  // Price of the date, or the package price from the Pricing tab when the date has none
+  const adult = toCents(date.adult_price) || toCents(data.pricing?.price_per_person);
   const child = date.child_price ? toCents(date.child_price) : adult;
   const single = toCents(date.single_supplement);
 
@@ -92,8 +97,8 @@ export function computeBooking({ data, input, today }) {
   };
 
   for (const r of rows) {
-    if (r.type === "adult") add("Adult (double occupancy)", r.qty, adult);
-    if (r.type === "couple") add("Couple room (2 travelers)", r.qty, adult * 2);
+    if (r.type === "adult") add(r.label || "Adult (double occupancy)", r.qty, adult);
+    if (r.type === "couple") add(r.label ? `${r.label} (2 travelers)` : "Couple room (2 travelers)", r.qty, adult * 2);
     if (r.type === "child") add("Child", r.qty, child);
     if (r.type === "single") {
       add("Adult (single room)", r.qty, adult);

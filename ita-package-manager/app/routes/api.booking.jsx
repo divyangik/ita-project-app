@@ -118,8 +118,12 @@ function buildTrip(data) {
     },
     included: names(data.included_items),
     cities: names(data.cities),
-    package_types: (data.guest_type_details?.package_type || []).map((g) => g.name).filter(Boolean),
-    traveller_types: (data.guest_type_details?.traveller_type || []).map((g) => g.name).filter(Boolean),
+    package_types: (data.guest_type_details?.package_type || [])
+      .map((g) => ({ name: g.name || g.value || "", value: g.value || "", message: g.message || "" }))
+      .filter((g) => g.name),
+    traveller_types: (data.guest_type_details?.traveller_type || [])
+      .map((g) => ({ name: g.name || g.value || "", value: g.value || "", message: g.message || "" }))
+      .filter((g) => g.name),
     has_itinerary_pdf: Boolean(data.itinerary?.itinerary_pdf_url),
     cta: {
       primary_label: cta.primary_label || "",
@@ -139,10 +143,11 @@ function buildCard(data) {
       String(d.departure_date) > today &&
       !(d.seats_total > 0 && d.seats_available <= 0),
   );
+  // "From" price = the package price from the Pricing tab; if empty, the lowest date price
   const prices = openDates.map((d) => Number(d.adult_price)).filter((n) => n > 0);
-  const fromPrice = prices.length
-    ? Math.min(...prices)
-    : Number(data.pricing?.price_per_person || 0) || null;
+  const fromPrice =
+    Number(data.pricing?.price_per_person || 0) ||
+    (prices.length ? Math.min(...prices) : null);
   const days = Number(info.days) || 0;
   const nights = Number(info.nights) || 0;
   const duration =
