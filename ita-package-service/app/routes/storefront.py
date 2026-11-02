@@ -155,6 +155,9 @@ def get_storefront_package(shopify_product_id: str, db: Session = Depends(get_db
         "traveller_type": _guest_type_details(
             "traveller", tour_info.traveller_types if tour_info else None
         ),
+        "tour_type": _guest_type_details(
+            "tour_type", tour_info.tour_type_tags if tour_info else None
+        ),
     }
 
     return {

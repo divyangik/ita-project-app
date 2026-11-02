@@ -36,10 +36,12 @@ function cleanRows(rows) {
     }
     // Optional name of the package type the traveler chose (for example "Senior")
     const label = String(r?.label || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 60);
-    const key = `${type}|${label}`;
+    // room: true = the Private room / Couple room / Child room from the Capacity tab
+    const room = r?.room === true;
+    const key = `${type}|${label}|${room ? 1 : 0}`;
     if (qty > 0) {
       const found = merged.get(key);
-      merged.set(key, { type, label, qty: (found ? found.qty : 0) + qty });
+      merged.set(key, { type, label, room, qty: (found ? found.qty : 0) + qty });
     }
   }
   const out = [...merged.values()];
@@ -89,7 +91,19 @@ export function computeBooking({ data, input, today }) {
   // Price of the date, or the package price from the Pricing tab when the date has none
   const adult = toCents(date.adult_price) || toCents(data.pricing?.price_per_person);
   const child = date.child_price ? toCents(date.child_price) : adult;
-  const single = toCents(date.single_supplement);
+  // Private room price from the Capacity tab wins; otherwise the date's single supplement
+  const single = toCents(cap.private_rooms_price) || toCents(date.single_supplement);
+  const coupleRoomExtra = toCents(cap.couple_room_price);
+  const childRoomExtra = toCents(cap.child_room_price);
+
+  // Room rows have a maximum (the "Count" field in the Capacity tab, 0 = no limit)
+  const roomMax = { single: cap.private_rooms_count, couple: cap.couple_room_count, child: cap.child_room_count };
+  for (const r of rows) {
+    const max = Number(roomMax[r.type]) || 0;
+    if (r.room && max > 0 && r.qty > max) {
+      throw new BookingError(`You can book up to ${max} of this room.`);
+    }
+  }
 
   const lines = [];
   const add = (label, qty, unit) => {
@@ -98,10 +112,10 @@ export function computeBooking({ data, input, today }) {
 
   for (const r of rows) {
     if (r.type === "adult") add(r.label || "Adult (double occupancy)", r.qty, adult);
-    if (r.type === "couple") add(r.label ? `${r.label} (2 travelers)` : "Couple room (2 travelers)", r.qty, adult * 2);
-    if (r.type === "child") add("Child", r.qty, child);
+    if (r.type === "couple") add(r.label ? `${r.label} (2 travelers)` : "Couple room (2 travelers)", r.qty, adult * 2 + (r.room ? coupleRoomExtra : 0));
+    if (r.type === "child") add(r.label || "Child", r.qty, child + (r.room ? childRoomExtra : 0));
     if (r.type === "single") {
-      add("Adult (single room)", r.qty, adult);
+      add(r.label || "Adult (single room)", r.qty, adult);
       add("Single supplement", r.qty, single);
     }
   }
@@ -188,7 +202,7 @@ export function buildDraftOrderInput(quote, contact, productId) {
       ["Travelers", quote.travelers],
       [
         "Rooms",
-        quote.rows.map((r) => `${r.qty} x ${r.type}`).join(", "),
+        quote.rows.map((r) => `${r.qty} x ${r.label || r.type}`).join(", "),
       ],
       [
         "Extras",

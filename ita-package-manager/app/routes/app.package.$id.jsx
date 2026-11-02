@@ -399,7 +399,10 @@ export async function action({ request, params }) {
       }
     }
 
-    return { saved: true, savedAt: Date.now() };
+    // Send the saved list (with real ids) back to the page. Without this the
+    // table keeps new rows with no id, so the next save creates them again.
+    const guestAddons = await getGuestAddons(params.id);
+    return { saved: true, savedAt: Date.now(), guestAddons };
   }
 
   if (intent === "toggle-publish") {
@@ -607,6 +610,12 @@ export default function EditPackage() {
       return () => clearTimeout(timer);
     }
   }, [datesFetcher.data]);
+
+  useEffect(() => {
+    if (travelPackageFetcher.data?.guestAddons) {
+      setAddonsForm(travelPackageFetcher.data.guestAddons.map((a) => ({ ...a })));
+    }
+  }, [travelPackageFetcher.data]);
 
   useEffect(() => {
     if (travelPackageFetcher.data?.saved) {
