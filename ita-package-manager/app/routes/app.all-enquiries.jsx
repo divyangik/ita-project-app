@@ -4,6 +4,7 @@ import { getEnquiries } from "../lib/python.server";
 
 import DashboardLayout from "../components/layout/DashboardLayout";
 import Sidebar from "../components/layout/Sidebar";
+import EnquiryList from "../components/layout/EnquiryList";
 
 export async function loader({ request }) {
   const { session } = await authenticate.admin(request);
@@ -28,10 +29,14 @@ export default function AllEnquiriesPage() {
         <div className="px-8 py-4">
           <h1 className="text-2xl font-bold text-gray-900">All Enquiries</h1>
           <p className="text-sm text-gray-500">
-            View and manage all enquiries received from your booking widget
+            Every enquiry submitted through the booking widget
           </p>
         </div>
       }
-    ></DashboardLayout>
+    >
+      <div className="px-8 py-6">
+        <EnquiryList enquiries={enquiries} />
+      </div>
+    </DashboardLayout>
   );
 }

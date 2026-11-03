@@ -182,8 +182,31 @@ export function validateContact(c) {
   return { name: name.slice(0, 120), email, phone: phone.slice(0, 40) };
 }
 
+// Every traveler on the booking: Traveler 1 is the person booking (contact).
+// The list must have one entry per traveler in the quote. Name is required, email and phone are optional.
+export function validateTravelers(list, expectedCount, contact) {
+  const lead = { name: contact.name, email: contact.email, phone: contact.phone, type: "" };
+  if (!Array.isArray(list) || list.length === 0) return [lead];
+  if (list.length !== expectedCount) {
+    throw new BookingError(`Please add details for all ${expectedCount} travelers.`);
+  }
+  const clean = (v, max) => String(v || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, max);
+  return list.map((t, i) => {
+    const name = clean(t?.name, 120);
+    const email = clean(t?.email, 200);
+    const phone = clean(t?.phone, 40);
+    if (!name) throw new BookingError(`Name of traveler ${i + 1} is required.`);
+    if (email && !/^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$/.test(email)) {
+      throw new BookingError(`Email of traveler ${i + 1} is not valid.`);
+    }
+    // Traveler 1 is always the person booking
+    if (i === 0) return { ...lead, type: clean(t?.type, 60) };
+    return { name, email, phone, type: clean(t?.type, 60) };
+  });
+}
+
 // Input for the Shopify Admin API draftOrderCreate mutation
-export function buildDraftOrderInput(quote, contact, productId) {
+export function buildDraftOrderInput(quote, contact, productId, travelers = []) {
   const attrs = (pairs) =>
     pairs
       .filter(([, v]) => v !== undefined && v !== null && v !== "")
@@ -192,7 +215,13 @@ export function buildDraftOrderInput(quote, contact, productId) {
   const paying = quote.payment_type === "deposit" ? "Deposit" : "Full payment";
   return {
     email: contact.email,
-    note: `Online booking: ${quote.package_title}, ${quote.date.departure_date} to ${quote.date.return_date}`,
+    note: [
+      `Online booking: ${quote.package_title}, ${quote.date.departure_date} to ${quote.date.return_date}`,
+      ...travelers.map(
+        (t, i) =>
+          `Traveler ${i + 1}: ${[t.name, t.type, t.email, t.phone].filter(Boolean).join(" | ")}`,
+      ),
+    ].join("\n"),
     tags: ["online-booking", "ita-booking"],
     customAttributes: attrs([
       ["Trip", quote.package_title],
@@ -214,6 +243,11 @@ export function buildDraftOrderInput(quote, contact, productId) {
       ["Lead traveler", contact.name],
       ["Phone", contact.phone],
       ["Departure ID", quote.date.id],
+      // One line per traveler: shows in the order's "Additional details"
+      ...travelers.map((t, i) => [
+        `Traveler ${i + 1}`,
+        [t.name, t.type, t.email, t.phone].filter(Boolean).join(" | "),
+      ]),
     ]),
     lineItems: [
       {

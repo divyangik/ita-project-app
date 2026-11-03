@@ -112,3 +112,21 @@ test("draft order input", () => {
   assert.equal(get("Travelers"), "2");
   assert.equal(get("Departure"), "2027-03-01");
 });
+
+import { validateTravelers } from "../app/lib/booking.server.js";
+
+test("every traveler is saved on the draft order", () => {
+  const contact = { name: "Ann", email: "ann@x.com", phone: "123456789" };
+  const list = [
+    { name: "Ann", type: "Adult" },
+    { name: "Bob", email: "bob@x.com", phone: "", type: "Senior" },
+  ];
+  const travelers = validateTravelers(list, 2, contact);
+  assert.equal(travelers.length, 2);
+  const r = q({ date_id: 1, rows: [{ type: "adult", qty: 2 }], payment_type: "deposit" });
+  const input = buildDraftOrderInput(r, contact, "1", travelers);
+  const attr = (k) => input.customAttributes.find((a) => a.key === k)?.value;
+  assert.equal(attr("Traveler 1"), "Ann | Adult | ann@x.com | 123456789");
+  assert.equal(attr("Traveler 2"), "Bob | Senior | bob@x.com");
+  assert.throws(() => validateTravelers(list, 3, contact), /all 3 travelers/);
+});

@@ -66,42 +66,33 @@ export default function EnquiryList({ enquiries }) {
       </div>
 
       <div className="w-full overflow-x-auto">
-        <table className="w-full table-fixed">
-          <colgroup>
-            <col className="w-12" />
-            <col className="w-[14%]" />
-            <col className="w-[14%]" />
-            <col className="w-[18%]" />
-            <col className="w-[12%]" />
-            <col className="w-[20%]" />
-            <col className="w-[10%]" />
-            <col className="w-[10%]" />
-          </colgroup>
+        <table className="w-full min-w-[980px]">
+          
 
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Sr.
               </th>
-              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Package
               </th>
-              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Customer
               </th>
-              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Email
               </th>
-              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Phone
               </th>
-              <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
                 Message
               </th>
-              <th className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
                 Responded
               </th>
-              <th className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500">
                 Date
               </th>
             </tr>
@@ -120,48 +111,47 @@ export default function EnquiryList({ enquiries }) {
                   key={e.id}
                   className="transition duration-200 hover:bg-blue-50"
                 >
-                  <td className="px-3 py-4 align-top font-medium text-gray-500">
+                  <td className="px-4 py-5 align-top font-medium text-gray-500">
                     {total - idx}
                   </td>
 
-                  <td className="px-3 py-4 align-top">
-                    <div className="truncate font-semibold text-gray-900">
+                  <td className="px-4 py-5 align-top">
+                    <div className="break-words font-semibold text-gray-900">
                       {e.package_title || "-"}
                     </div>
                   </td>
 
-                  <td className="px-3 py-4 align-top">
-                    <div className="truncate font-semibold text-gray-900">
+                  <td className="px-4 py-5 align-top">
+                    <div className="break-words font-semibold text-gray-900">
                       {e.name}
                     </div>
                   </td>
 
-                  <td className="px-3 py-4 align-top">
+                  <td className="px-4 py-5 align-top">
                     <a
                       href={`mailto:${e.email}`}
-                      className="block truncate text-blue-600 hover:underline"
+                      className="block break-all text-blue-600 hover:underline"
                       title={e.email}
                     >
                       {e.email}
                     </a>
                   </td>
 
-                  <td className="px-3 py-4 align-top">
-                    <span className="inline-block truncate rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700">
+                  <td className="px-4 py-5 align-top">
+                    <span className="inline-block whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700">
                       {e.phone}
                     </span>
                   </td>
 
-                  <td className="px-3 py-4 align-top">
+                  <td className="px-4 py-5 align-top">
                     <div
-                      className="truncate text-gray-600"
-                      title={e.message || ""}
+                      className="whitespace-pre-line break-words text-sm leading-relaxed text-gray-600"
                     >
                       {e.message || "-"}
                     </div>
                   </td>
 
-                  <td className="px-3 py-4 align-top">
+                  <td className="px-4 py-5 align-top">
                     <div className="flex items-center justify-center gap-2">
                       <ToggleCell enquiry={e} />
                       <span
@@ -174,9 +164,9 @@ export default function EnquiryList({ enquiries }) {
                     </div>
                   </td>
 
-                  <td className="px-3 py-4 text-center align-top">
+                  <td className="px-4 py-5 text-center align-top">
                     {e.responded_date ? (
-                      <span className="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                      <span className="inline-flex whitespace-nowrap rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
                         {formatDate(e.responded_date)}
                       </span>
                     ) : (

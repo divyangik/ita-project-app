@@ -11,6 +11,7 @@ import {
   buildDraftOrderInput,
   computeBooking,
   validateContact,
+  validateTravelers,
 } from "../lib/booking.server";
 
 const SERVICE = () => process.env.PYTHON_SERVICE_URL;
@@ -227,6 +228,7 @@ export async function action({ request }) {
     if (body.intent !== "checkout") return json(request, { quote });
 
     const contact = validateContact(body.contact);
+    const travelers = validateTravelers(body.travelers, quote.travelers, contact);
     const shop = data.package?.shop_domain;
     if (!shop) throw new BookingError("Shop is not configured for this trip.", 500);
 
@@ -239,7 +241,7 @@ export async function action({ request }) {
           userErrors { field message }
         }
       }`,
-      { variables: { input: buildDraftOrderInput(quote, contact, productId) } },
+      { variables: { input: buildDraftOrderInput(quote, contact, productId, travelers) } },
     );
     const result = await response.json();
     const payload = result?.data?.draftOrderCreate;
